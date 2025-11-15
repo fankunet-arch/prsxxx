@@ -80,18 +80,19 @@ if (!function_exists('render_header')) {
     <div class="card">
       <div class="hd">
         <div class="badge">PRS · Price Recording System</div>
-        <div class="muted">批量导入 & 校验</div>
-        <div style="margin-left:auto" class="muted"><a href="/prs/console/ingest_text.php">导入</a></div>
+        <div style="margin-left:auto" class="muted">
+            <a href="/prs/console/ingest_text.php">导入</a>
+            <a href="/prs/console/trends.php" style="margin-left:16px">价格趋势</a>
+            <a href="/prs/console/products_browser.php" style="margin-left:16px">产品列表</a>
+            <a href="/prs/console/stores_browser.php" style="margin-left:16px">门店列表</a>
+        </div>
       </div>
       <div class="body">
 <?php } }
 
 if (!function_exists('render_footer')) {
     function render_footer(): void { ?>
-      </div><!-- /body -->
-    </div><!-- /card -->
-  </div><!-- /container -->
-  <script>
+      </div></div></div><script>
     const toast = (msg,type='ok',ms=2400)=>{
       const t = document.getElementById('toast');
       t.className = 'toast ' + type;

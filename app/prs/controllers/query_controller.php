@@ -8,6 +8,8 @@ declare(strict_types=1);
  * - 月在市（当月>=1日有观测即在市）
  * - 缺货段（可视化）
  * - 名称解析（文本 → ID）
+ * - [NEW] 产品列表 (list_products)
+ * - [NEW] 门店列表 (list_stores)
  */
 
 final class PRS_Query_Controller
@@ -129,6 +131,82 @@ final class PRS_Query_Controller
             'store_candidates' => $storeCandidates,
         ];
     }
+
+    /* ---------- [新增] 产品列表 ---------- */
+    public function list_products(int $page = 1, int $pageSize = 20, string $q = ''): array
+    {
+        $offset = ($page - 1) * $pageSize;
+        $where = '1=1';
+        $params = []; // 用于 COUNT 查询
+
+        if ($q) {
+            $qLike = '%'.$q.'%';
+            $where = " (p.name_es LIKE ? OR (p.name_zh IS NOT NULL AND p.name_zh LIKE ?))";
+            $params = [$qLike, $qLike];
+        }
+
+        // 统计总数（需要考虑搜索条件）
+        $countSql = "SELECT COUNT(*) FROM prs_products p WHERE {$where}";
+        $countStmt = $this->pdo->prepare($countSql);
+        $countStmt->execute($params);
+        $totalCount = (int)$countStmt->fetchColumn();
+
+        // 查询分页数据
+        // 使用 LEFT JOIN 查找最近一次观测日期
+        $sql = "
+            SELECT 
+                p.id, p.name_es, p.name_zh, p.category, 
+                MAX(o.date_local) AS last_observed_date,
+                p.created_at
+            FROM prs_products p
+            LEFT JOIN prs_price_observations o ON p.id = o.product_id
+            WHERE {$where}
+            GROUP BY p.id
+            ORDER BY p.id DESC
+            LIMIT ? OFFSET ?
+        ";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $paramIndex = 1; // 用于绑定参数的索引计数器
+
+        // 1. 绑定搜索参数 (如果存在)
+        if ($q) {
+            $qLike = '%'.$q.'%';
+            $stmt->bindValue($paramIndex++, $qLike);
+            $stmt->bindValue($paramIndex++, $qLike);
+        }
+
+        // 2. 绑定 LIMIT 和 OFFSET 参数 (总是最后两个)
+        $stmt->bindValue($paramIndex++, $pageSize, \PDO::PARAM_INT);
+        $stmt->bindValue($paramIndex++, $offset, \PDO::PARAM_INT);
+
+        $stmt->execute();
+        
+        return [
+            'total' => $totalCount, 
+            'page'  => $page, 
+            'pageSize' => $pageSize,
+            'items' => $stmt->fetchAll() ?: []
+        ];
+    }
+
+    /* ---------- [新增] 门店列表 ---------- */
+    public function list_stores(): array
+    {
+        $sql = "
+            SELECT 
+                s.id, s.store_name, s.created_at, 
+                COUNT(DISTINCT o.date_local) AS days_observed,
+                COUNT(o.id) AS total_observations
+            FROM prs_stores s
+            LEFT JOIN prs_price_observations o ON s.id = o.store_id
+            GROUP BY s.id
+            ORDER BY s.id DESC
+        ";
+        $stmt = $this->pdo->query($sql);
+        return $stmt->fetchAll() ?: [];
+    }
+
 
     /* ---------- 时序 ---------- */
 
