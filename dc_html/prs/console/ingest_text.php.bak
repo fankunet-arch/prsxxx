@@ -25,6 +25,13 @@ $aiPrompt = "你是一个价格记录系统的数据解析助手。\n请根据�
 <div class="row">
   <div class="col">
     <div class="stack">
+      <div class="kv" style="align-items:flex-start">
+        <label>AI 提示词</label>
+        <div class="stack" style="flex:1">
+            <textarea id="aiPromptHelper" class="code" rows="12" readonly><?= htmlspecialchars($aiPrompt) ?></textarea>
+            <button class="btn secondary" id="btnCopyPrompt" style="width:100px;align-self:flex-end;margin-top:-5px">复制提示词</button>
+        </div>
+      </div>
       <div class="kv"><label>AI模型（可选）</label><input id="aiModel" placeholder="例如: gpt-ocr / gemini-vision / manual"></div>
       <div class="kv"><label>快速提示</label>
         <div class="muted">首行写“日期 + 店名”，后面按块写明细。分隔符不限，自动识别（#@、||、## 等）。</div>
@@ -41,15 +48,7 @@ pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@"></textarea>
         <button class="btn" id="btnDry">试运行校验</button>
         <button class="btn ok" id="btnCommit">正式入库</button>
       </div>
-
-      <div class="kv" style="align-items:flex-start; margin-top: 16px;">
-        <label>AI 提示词</label>
-        <div class="stack" style="flex:1">
-            <textarea id="aiPromptHelper" class="code" rows="12" readonly><?= htmlspecialchars($aiPrompt) ?></textarea>
-            <button class="btn secondary" id="btnCopyPrompt" style="width:100px;align-self:flex-end;margin-top:-5px">复制提示词</button>
-        </div>
-      </div>
-      </div>
+    </div>
   </div>
 
   <div class="col">
