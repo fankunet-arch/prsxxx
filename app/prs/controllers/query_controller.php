@@ -10,6 +10,8 @@ declare(strict_types=1);
  * - 名称解析（文本 → ID）
  * - [NEW] 产品列表 (list_products)
  * - [NEW] 门店列表 (list_stores)
+ * - [FIX] list_products 参数绑定
+ * - [FIX] products_search 返回 base_name_es
  */
 
 final class PRS_Query_Controller
@@ -34,8 +36,9 @@ final class PRS_Query_Controller
     public function products_search(string $q, int $limit = 20): array
     {
         $qLike = '%'.$q.'%';
+        // [FIX] 包含 base_name_es
         $stmt = $this->pdo->prepare("
-            SELECT id, name_es, name_zh, category, image_filename
+            SELECT id, name_es, base_name_es, name_zh, category, image_filename
             FROM prs_products
             WHERE name_es LIKE ? OR (name_zh IS NOT NULL AND name_zh LIKE ?)
             ORDER BY name_es ASC
@@ -141,6 +144,7 @@ final class PRS_Query_Controller
 
         if ($q) {
             $qLike = '%'.$q.'%';
+            // 搜索条件同时匹配完整的 name_es 和 name_zh
             $where = " (p.name_es LIKE ? OR (p.name_zh IS NOT NULL AND p.name_zh LIKE ?))";
             $params = [$qLike, $qLike];
         }
@@ -152,10 +156,9 @@ final class PRS_Query_Controller
         $totalCount = (int)$countStmt->fetchColumn();
 
         // 查询分页数据
-        // 使用 LEFT JOIN 查找最近一次观测日期
         $sql = "
             SELECT 
-                p.id, p.name_es, p.name_zh, p.category, 
+                p.id, p.name_es, p.base_name_es, p.name_zh, p.category, 
                 MAX(o.date_local) AS last_observed_date,
                 p.created_at
             FROM prs_products p

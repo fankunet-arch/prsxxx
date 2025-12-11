@@ -8,6 +8,7 @@ declare(strict_types=1);
  * - 键值：ud / udp / pkg / img / zh / cat / st
  * - 默认上市：只要读到一块数据，即 status=listed
  * - 幂等：同一 product_id+store_id+date_local + 指纹 唯一
+ * - [FIX] 自动提取 base_name_es 以支持产品规格分组
  * 依赖：/app/prs/config_prs/env_prs.php 提供 cfg() 数组
  */
 
@@ -182,17 +183,51 @@ final class PRS_Ingest_Controller
         $stmt->execute([$storeId, $dateLocal, $sha, $aiModel, $nowUtc]);
         return (int)$this->pdo->lastInsertId();
     }
+    
+    // [NEW/FIX] 剥离尺寸/包装后缀，得到基础名称
+    private function derive_base_name(string $nameEs): string
+    {
+        $name = trim($nameEs);
+        
+        // 1. 移除重量/容量后缀 (e.g., 5 KG., 500 GR, 1,5, 2 KG.)
+        // 匹配：空格 + 数字/逗号/点 + (KG|GR|L|LT|G) + 可选的标点/空格
+        $name = preg_replace('/\s+[\d,\.]{1,}(\s*(KG|GR|L|LT|G)[.\s]*)+$/i', '', $name);
+        // 匹配：空格 + 数字/逗号/点（如 Mandarina Hoja 1,5, Castana 500 GR）
+        $name = preg_replace('/\s+[\d,\.]{1,3}$/i', '', $name); 
+        
+        // 2. 移除包装/形态后缀 (e.g., Bolsa, Bandeja, Granel, Band)
+        $suffixes = ['Bolsa', 'Band', 'Bandeja', 'Granel', 'En Malla', 'Bolsita', 'Malla'];
+        $pattern = '/\s+(' . implode('|', $suffixes) . ')\s*$/i';
+        $name = preg_replace($pattern, '', $name);
+        
+        // 3. 移除特殊规格描述
+        $name = preg_replace('/\s+De Mesa\s*$/i', '', $name); // Uva Blanca de Mesa -> Uva Blanca
+        $name = preg_replace('/\s+Hoja\s*$/i', '', $name); // Mandarina Hoja -> Mandarina
+
+        return trim($name);
+    }
 
     private function ensure_product(string $nameEs, string $category, ?string $nameZh, string $nowUtc): int
     {
-        $stmt = $this->pdo->prepare("SELECT id FROM prs_products WHERE name_es=? AND category=?");
+        $baseNameEs = $this->derive_base_name($nameEs);
+        
+        // 查询时，我们仍然使用完整的 name_es 和 category 来确定是否是同一 SKU
+        $stmt = $this->pdo->prepare("SELECT id, base_name_es FROM prs_products WHERE name_es=? AND category=?");
         $stmt->execute([$nameEs, $category]);
         $row = $stmt->fetch();
-        if ($row) { return (int)$row['id']; }
+        if ($row) { 
+            // 如果已存在，但 base_name_es 可能是 NULL（历史数据），则尝试更新
+            if ($row['base_name_es'] === null || $row['base_name_es'] !== $baseNameEs) {
+                 $updateStmt = $this->pdo->prepare("UPDATE prs_products SET base_name_es=?, updated_at=? WHERE id=?");
+                 $updateStmt->execute([$baseNameEs, $nowUtc, $row['id']]);
+            }
+            return (int)$row['id']; 
+        }
 
-        $stmt = $this->pdo->prepare("INSERT INTO prs_products (name_es, name_zh, category, is_active, created_at, updated_at)
-                                     VALUES (?,?,?,?,?,?)");
-        $stmt->execute([$nameEs, $nameZh, $category, 1, $nowUtc, $nowUtc]);
+        // 插入时，同时插入完整的 name_es 和计算后的 base_name_es
+        $stmt = $this->pdo->prepare("INSERT INTO prs_products (name_es, base_name_es, name_zh, category, is_active, created_at, updated_at)
+                                     VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$nameEs, $baseNameEs, $nameZh, $category, 1, $nowUtc, $nowUtc]);
         $pid = (int)$this->pdo->lastInsertId();
 
         // 建立默认别名（ES）
