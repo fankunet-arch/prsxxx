@@ -2,13 +2,15 @@
 /**
  * PRS API Gateway (ingest + query)
  * Routes:
- *   POST ?res=ingest&act=bulk
- *   POST ?res=query&act=resolve            (product_name, store_name)
- *   GET  ?res=query&act=products_search&q=
- *   GET  ?res=query&act=stores_search&q=
- *   GET  ?res=query&act=timeseries&product_id=&store_id=&from=&to=&agg=day|week|month
- *   GET  ?res=query&act=season&product_id=&store_id=&from_ym=&to_ym=
- *   GET  ?res=query&act=stockouts&product_id=&store_id=&from=&to=
+ * POST ?res=ingest&act=bulk
+ * POST ?res=query&act=resolve            (product_name, store_name)
+ * GET  ?res=query&act=products_search&q=
+ * GET  ?res=query&act=stores_search&q=
+ * GET  ?res=query&act=timeseries&product_id=&store_id=&from=&to=&agg=day|week|month
+ * GET  ?res=query&act=season&product_id=&store_id=&from_ym=&to_ym=
+ * GET  ?res=query&act=stockouts&product_id=&store_id=&from=&to=
+ * [NEW] GET ?res=query&act=list_products&page=&size=&q=
+ * [NEW] GET ?res=query&act=list_stores
  */
 
 declare(strict_types=1);
@@ -71,6 +73,21 @@ try {
             $q = (string)($_GET['q'] ?? '');
             $list = $q === '' ? [] : $ctl->stores_search($q);
             respond_json(['ok' => true, 'items' => $list]);
+        }
+        
+        // [NEW] 产品列表
+        if ($act === 'list_products') {
+            $page = (int)($_GET['page'] ?? 1);
+            $size = (int)($_GET['size'] ?? 20);
+            $q    = (string)($_GET['q'] ?? '');
+            $data = $ctl->list_products($page, $size, $q);
+            respond_json(['ok' => true] + $data);
+        }
+
+        // [NEW] 门店列表
+        if ($act === 'list_stores') {
+            $rows = $ctl->list_stores();
+            respond_json(['ok' => true, 'rows' => $rows]);
         }
 
         if ($act === 'timeseries') {
