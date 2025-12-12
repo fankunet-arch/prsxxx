@@ -10,8 +10,6 @@ if (!defined('PRS_ENTRY')) {
     die('Access denied');
 }
 
-
-
 // 加载 header 布局
 $header = PRS_VIEW_PATH . '/layouts/header.php';
 if (!is_file($header)) {
@@ -29,52 +27,79 @@ $imgBase = (function(){
     return $c['prs_images_base_url'] ?? '/prs/assets/img/products/';
 })();
 ?>
-<div class="stack" style="gap:16px">
-  <div class="row">
-    <div class="col">
-      <div class="kv"><label>产品</label>
-        <input id="inpProd" list="dlProd" placeholder="输入ES名/中文检索"><datalist id="dlProd"></datalist>
-        <div class="muted" id="prodInfo"></div>
+
+<div class="panel soft">
+  <div class="stack">
+    <div class="pill">趋势分析</div>
+    <h2 style="margin:0;font-size:22px">对比产品与门店，曲线与缺货段一屏呈现</h2>
+    <div class="notice">筛选区块与结果分栏对齐，移动端可上下滑动；表格与图表高度自适应，避免撑满试运行页面。</div>
+  </div>
+</div>
+
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">选择条件</h3>
+    <span class="muted">先锁定产品与门店，再选择时间与聚合粒度</span>
+  </div>
+  <div class="section-body">
+    <div class="row">
+      <div class="col">
+        <div class="kv"><label>产品</label>
+          <input id="inpProd" list="dlProd" placeholder="输入ES名/中文检索"><datalist id="dlProd"></datalist>
+          <div class="muted" id="prodInfo"></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="kv"><label>门店</label>
+          <input id="inpStore" list="dlStore" placeholder="输入门店名检索"><datalist id="dlStore"></datalist>
+        </div>
       </div>
     </div>
-    <div class="col">
-      <div class="kv"><label>门店</label>
-        <input id="inpStore" list="dlStore" placeholder="输入门店名检索"><datalist id="dlStore"></datalist>
+
+    <div class="row">
+      <div class="col">
+        <div class="kv"><label>时间</label>
+          <input id="from" type="date"> 至 <input id="to" type="date" style="max-width:200px">
+        </div>
+      </div>
+      <div class="col">
+        <div class="kv"><label>聚合</label>
+          <select id="agg">
+            <option value="day">按日</option>
+            <option value="week">按周</option>
+            <option value="month">按月</option>
+          </select>
+          <div class="spacer"></div>
+          <button class="btn" id="btnQuery" style="max-width:160px">查询</button>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="row">
-    <div class="col">
-      <div class="kv"><label>时间</label>
-        <input id="from" type="date"> 至 <input id="to" type="date" style="max-width:200px">
-      </div>
-    </div>
-    <div class="col">
-      <div class="kv"><label>聚合</label>
-        <select id="agg">
-          <option value="day">按日</option>
-          <option value="week">按周</option>
-          <option value="month">按月</option>
-        </select>
-        <div style="flex:1"></div>
-        <button class="btn" id="btnQuery" style="max-width:160px">查询</button>
-      </div>
-    </div>
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">曲线 & 缺货提示</h3>
+    <span class="chip">€/kg 折线</span>
   </div>
-
-  <div class="card" style="border-radius:16px">
-    <div class="body">
-      <canvas id="chart" width="960" height="320" style="width:100%;height:auto;max-height:320px"></canvas>
-      <div class="muted" id="hint" style="margin-top:6px;font-size:12px">浅绿：当月在市；淡红：缺货段；折线：€/kg</div>
-    </div>
+  <div class="section-body">
+    <canvas id="chart" width="960" height="320" style="width:100%;height:auto;max-height:320px"></canvas>
+    <div class="muted" id="hint" style="margin-top:6px;font-size:12px">浅绿：当月在市；淡红：缺货段；折线：€/kg</div>
   </div>
+</div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:420px;display:none">
-    <table class="table" id="tbl">
-      <thead><tr id="thead"></tr></thead>
-      <tbody></tbody>
-    </table>
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">数据明细</h3>
+    <span class="muted">左右滑动查看更多</span>
+  </div>
+  <div class="section-body">
+    <div id="tableWrap" class="table-wrapper result-wrap" style="max-height:420px;display:none">
+      <table class="table" id="tbl">
+        <thead><tr id="thead"></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -85,7 +110,6 @@ $imgBase = (function(){
 
   let selectedProd = null, selectedStore = null;
 
-  // --- 联想（保持） ---
   const debounce = (fn, ms=250) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);}};
 
   $('#inpProd').addEventListener('input', debounce(async e => {
@@ -133,12 +157,10 @@ $imgBase = (function(){
     selectedStore = hit ? {id: parseInt(hit.dataset.sid,10), name: v} : null;
   });
 
-  // --- 统一：点击查询 → 先请求后端解析名称 → 拿到ID再查 ---
   $('#btnQuery').addEventListener('click', async ()=>{
     const prodText  = $('#inpProd').value.trim();
     const storeText = $('#inpStore').value.trim();
 
-    // 若前端未选中，则调用后端解析
     if (!selectedProd || !selectedStore) {
       const body = new URLSearchParams();
       body.set('product_name', prodText);
@@ -191,7 +213,6 @@ $imgBase = (function(){
     toast('查询完成', 'ok');
   });
 
-  // --- 表格 ---
   function fillTable(rows, agg){
     const thead = document.querySelector('#thead'); const tb = document.querySelector('#tbl tbody'); tb.innerHTML = '';
     if (agg==='day'){ thead.innerHTML = `<th>日期</th><th>€/kg</th><th>样本数</th>`; }
@@ -212,7 +233,6 @@ $imgBase = (function(){
     document.querySelector('#tableWrap').style.display = rows.length ? 'block' : 'none';
   }
 
-  // --- 画图 ---
   function drawChart(rows, seasonRows, stockouts, agg){
     const cvs = document.querySelector('#chart'), ctx = cvs.getContext('2d');
     const DPR = window.devicePixelRatio || 1;
@@ -238,11 +258,9 @@ $imgBase = (function(){
     const X = x => padL + (x - xmin) / Math.max(1,(xmax-xmin)) * (Wcss - padL - padR);
     const Y = y => (Hcss - padB) - (y - ymin) / Math.max(0.0001,(ymax-ymin)) * (Hcss - padT - padB);
 
-    // 网格
     ctx.strokeStyle='rgba(127,127,127,.25)'; ctx.lineWidth=1;
     for(let i=0;i<=4;i++){ const y= padT + i*(Hcss-padT-padB)/4; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(Wcss-padR,y); ctx.stroke(); }
 
-    // 在市月（浅绿）
     seasonRows.forEach(r=>{
       if (r.is_in_market_month!=1) return;
       const start = parseD(r.ym + '-01');
@@ -255,7 +273,6 @@ $imgBase = (function(){
       }
     });
 
-    // 缺货段（淡红）
     stockouts.forEach(s=>{
       const x1 = X(Math.max(xmin, parseD(s.gap_start)));
       const x2 = X(Math.min(xmax, parseD(s.gap_end)));
@@ -265,14 +282,12 @@ $imgBase = (function(){
       }
     });
 
-    // 折线
     ctx.beginPath();
     points.forEach((p,i)=>{ const x=X(p.x), y=Y(p.y); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#3aa6ff';
     ctx.stroke();
 
-    // y轴标签
     ctx.fillStyle='#9aa0a6'; ctx.font='12px system-ui';
     ctx.fillText(ymin.toFixed(2), 6, Y(ymin));
     ctx.fillText(ymax.toFixed(2), 6, Y(ymax));

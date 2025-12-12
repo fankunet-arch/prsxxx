@@ -10,8 +10,6 @@ if (!defined('PRS_ENTRY')) {
     die('Access denied');
 }
 
-
-
 // 加载 header 布局
 $header = PRS_VIEW_PATH . '/layouts/header.php';
 if (!is_file($header)) {
@@ -25,25 +23,40 @@ render_header('PRS · 门店列表');
 // API 基础路径 - 使用新的路由方式
 $apiBase = '/prs/index.php?action=query_list_stores';
 ?>
-<div class="stack" style="gap:16px">
-  <div class="toolbar">
-    <div class="muted" id="summary"></div>
-  </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:600px">
-    <table class="table" id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>门店名称</th>
-          <th>观测天数</th>
-          <th>总观测数</th>
-          <th>创建日期</th>
-        </tr>
-      </thead>
-      <tbody>
-        </tbody>
-    </table>
+<div class="panel soft">
+  <div class="stack">
+    <div class="pill">门店目录</div>
+    <h2 style="margin:0;font-size:22px">查看覆盖范围和观测频次，轻量表格适配手机</h2>
+    <div class="notice">表格已限制高度并支持滑动，避免在小屏设备上撑满页面。</div>
+  </div>
+</div>
+
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">门店列表</h3>
+    <span class="muted">按创建时间倒序</span>
+  </div>
+  <div class="section-body">
+    <div class="toolbar" style="margin-bottom:10px">
+      <div class="muted" id="summary"></div>
+    </div>
+
+    <div id="tableWrap" class="table-wrapper result-wrap" style="max-height:520px">
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>门店名称</th>
+            <th>观测天数</th>
+            <th>总观测数</th>
+            <th>创建日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -95,7 +108,6 @@ $apiBase = '/prs/index.php?action=query_list_stores';
     toast('查询完成', 'ok', 1200);
   }
 
-  // 首次加载
   (async function() {
     const rows = await fetchStores();
     fillTable(rows);

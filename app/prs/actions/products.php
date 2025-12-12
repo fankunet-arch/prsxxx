@@ -10,8 +10,6 @@ if (!defined('PRS_ENTRY')) {
     die('Access denied');
 }
 
-
-
 // 加载 header 布局
 $header = PRS_VIEW_PATH . '/layouts/header.php';
 if (!is_file($header)) {
@@ -25,36 +23,50 @@ render_header('PRS · 产品列表');
 // API 基础路径 - 使用新的路由方式
 $apiBase = '/prs/index.php?action=query_list_products';
 ?>
-<div class="stack" style="gap:16px">
-  <div class="toolbar">
-    <input id="inpSearch" type="text" placeholder="输入ES名/中文名检索" style="max-width:320px; flex:none;">
-    <button class="btn" id="btnSearch" style="max-width:120px; flex:none;">搜索</button>
-    <div style="flex:1"></div>
-    <div class="muted" id="summary"></div>
-  </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:600px">
-    <table class="table" id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>ES名称 (SKU)</th>
-          <th>基础名称</th>
-          <th>中文名称</th>
-          <th>类目</th>
-          <th>最近观测日</th>
-          <th>创建日期</th>
-        </tr>
-      </thead>
-      <tbody>
-        </tbody>
-    </table>
+<div class="panel soft">
+  <div class="stack">
+    <div class="pill">产品目录</div>
+    <h2 style="margin:0;font-size:22px">按中西文名称快速检索，移动端同样顺畅</h2>
+    <div class="notice">如需查看更多字段，可左右滑动表格；表格高度自动收缩，避免手机端被撑开。</div>
   </div>
+</div>
 
-  <div class="toolbar" id="pagination" style="justify-content:flex-end; display:none;">
-    <button class="btn secondary" id="btnPrev">上一页</button>
-    <div class="muted" id="pageInfo" style="margin: 0 10px;"></div>
-    <button class="btn secondary" id="btnNext">下一页</button>
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">产品列表</h3>
+    <span class="muted">默认按创建时间排序</span>
+  </div>
+  <div class="section-body">
+    <div class="toolbar" style="margin-bottom:10px">
+      <input id="inpSearch" type="text" placeholder="输入ES名/中文名检索" style="max-width:320px; flex:none;">
+      <button class="btn" id="btnSearch" style="max-width:120px; flex:none;">搜索</button>
+      <div class="spacer"></div>
+      <div class="muted" id="summary"></div>
+    </div>
+    <div id="tableWrap" class="table-wrapper result-wrap" style="max-height:540px">
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>ES名称 (SKU)</th>
+            <th>基础名称</th>
+            <th>中文名称</th>
+            <th>类目</th>
+            <th>最近观测日</th>
+            <th>创建日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          </tbody>
+      </table>
+    </div>
+
+    <div class="toolbar" id="pagination" style="justify-content:flex-end; display:none; margin-top:10px;">
+      <button class="btn secondary" id="btnPrev">上一页</button>
+      <div class="muted" id="pageInfo" style="margin: 0 10px;"></div>
+      <button class="btn secondary" id="btnNext">下一页</button>
+    </div>
   </div>
 </div>
 
@@ -110,11 +122,9 @@ $apiBase = '/prs/index.php?action=query_list_products';
       tb.appendChild(tr);
     });
 
-    // 更新总结信息
     const totalPages = Math.ceil(data.total / PAGE_SIZE);
     $('#summary').textContent = `总计 ${data.total} 条记录，当前第 ${data.page} 页 / 共 ${totalPages} 页`;
 
-    // 更新分页控件
     currentPage = data.page;
     $('#pageInfo').textContent = `${currentPage} / ${totalPages}`;
     $('#btnPrev').disabled = currentPage <= 1;
@@ -129,13 +139,11 @@ $apiBase = '/prs/index.php?action=query_list_products';
     toast('查询完成', 'ok', 1200);
   }
 
-  // 首次加载
   (async function() {
     const data = await fetchData(1);
     fillTable(data);
   })();
 
-  // 绑定事件
   $('#btnSearch').addEventListener('click', () => {
     currentPage = 1;
     queryProducts();

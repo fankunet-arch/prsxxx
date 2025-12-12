@@ -41,128 +41,146 @@ try {
 }
 ?>
 
-<div class="stack" style="gap: 24px; max-width: 1200px; margin: 0 auto;">
-  <!-- 欢迎区 -->
-  <div class="card">
-    <div class="body">
-      <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">欢迎使用 PRS 系统</h2>
-      <p class="muted" style="margin: 0;">价格记录系统 (Price Recording System) - 多门店商品价格管理与分析平台</p>
-    </div>
-  </div>
-
-  <!-- 统计卡片 -->
-  <div class="row" style="gap: 16px;">
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #3aa6ff; margin-bottom: 8px;">
-          <?= $productCount ?>
-        </div>
-        <div class="muted">产品总数</div>
+<div class="panel soft">
+  <div class="stack">
+    <div class="pill">控制台</div>
+    <div class="row" style="align-items:flex-end">
+      <div class="col">
+        <h1 style="margin:0;font-size:26px;line-height:1.2">欢迎回来，PRS 控制台已焕新</h1>
+        <p class="muted" style="margin:6px 0 0 0">现代化界面，桌面与移动端一致友好。核心功能保持简洁，随时可用。</p>
       </div>
-    </div>
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #30d158; margin-bottom: 8px;">
-          <?= $storeCount ?>
-        </div>
-        <div class="muted">门店总数</div>
-      </div>
-    </div>
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #ff9f0a; margin-bottom: 8px;">
-          <?= number_format($totalObs) ?>
-        </div>
-        <div class="muted">价格观测总数</div>
+      <div class="col" style="text-align:right;min-width:200px">
+        <div class="chip">稳定运行 · <?= date('Y-m-d') ?></div>
       </div>
     </div>
   </div>
-
-  <!-- 快速导航 -->
-  <div class="card">
-    <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">快速导航</h3>
-      <div class="row" style="gap: 12px;">
-        <a href="/prs/index.php?action=ingest" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">📥</div>
-          <div>批量导入</div>
-        </a>
-        <a href="/prs/index.php?action=products" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">🛒</div>
-          <div>产品列表</div>
-        </a>
-        <a href="/prs/index.php?action=stores" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">🏪</div>
-          <div>门店列表</div>
-        </a>
-        <a href="/prs/index.php?action=trends" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">📊</div>
-          <div>价格趋势</div>
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <!-- 功能说明 -->
-  <div class="card">
-    <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">功能说明</h3>
-      <div class="stack" style="gap: 12px;">
-        <div>
-          <strong>📥 批量导入</strong><br>
-          <span class="muted">支持文本格式批量导入价格数据，包含试运行校验和 AI 提示词辅助功能</span>
-        </div>
-        <div>
-          <strong>🛒 产品列表</strong><br>
-          <span class="muted">浏览和搜索所有产品，支持中英文名称检索，查看产品分类和观测历史</span>
-        </div>
-        <div>
-          <strong>🏪 门店列表</strong><br>
-          <span class="muted">查看所有门店及其数据统计，包括观测天数和记录总数</span>
-        </div>
-        <div>
-          <strong>📊 价格趋势</strong><br>
-          <span class="muted">分析特定产品在特定门店的价格走势，支持日/周/月聚合，可视化展示季节性和缺货段</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 最近活跃门店 -->
-  <?php if ($storeCount > 0): ?>
-  <div class="card">
-    <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">门店概览</h3>
-      <div class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>门店名称</th>
-              <th>观测天数</th>
-              <th>总观测数</th>
-              <th>创建时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach (array_slice($stores, 0, 5) as $store): ?>
-            <tr>
-              <td><?= htmlspecialchars($store['store_name']) ?></td>
-              <td><?= $store['days_observed'] ?></td>
-              <td><?= number_format($store['total_observations']) ?></td>
-              <td><?= substr($store['created_at'], 0, 10) ?></td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
-      <?php if ($storeCount > 5): ?>
-      <div style="text-align: center; margin-top: 12px;">
-        <a href="/prs/index.php?action=stores" class="muted">查看全部门店 →</a>
-      </div>
-      <?php endif; ?>
-    </div>
-  </div>
-  <?php endif; ?>
 </div>
+
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">系统概览</h3>
+    <span class="chip">实时统计</span>
+  </div>
+  <div class="section-body">
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="muted">产品总数</div>
+        <div class="stat-value" style="color:#4da3ff;"><?= $productCount ?></div>
+      </div>
+      <div class="stat-card">
+        <div class="muted">门店总数</div>
+        <div class="stat-value" style="color:#34c759;"><?= $storeCount ?></div>
+      </div>
+      <div class="stat-card">
+        <div class="muted">价格观测总数</div>
+        <div class="stat-value" style="color:#ff9f0a;"><?= number_format($totalObs) ?></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">快速导航</h3>
+    <span class="muted">常用入口一屏展示</span>
+  </div>
+  <div class="section-body">
+    <div class="nav-grid">
+      <a class="nav-item" href="/prs/index.php?action=ingest">
+        <span class="icon">📥</span>
+        <div class="stack" style="gap:4px">
+          <span>批量导入</span>
+          <span class="desc">遵循模板粘贴数据，可先试运行校验</span>
+        </div>
+      </a>
+      <a class="nav-item" href="/prs/index.php?action=products">
+        <span class="icon">🛒</span>
+        <div class="stack" style="gap:4px">
+          <span>产品列表</span>
+          <span class="desc">检索中西文名，查看基础属性</span>
+        </div>
+      </a>
+      <a class="nav-item" href="/prs/index.php?action=stores">
+        <span class="icon">🏪</span>
+        <div class="stack" style="gap:4px">
+          <span>门店列表</span>
+          <span class="desc">关注覆盖度与观测频次</span>
+        </div>
+      </a>
+      <a class="nav-item" href="/prs/index.php?action=trends">
+        <span class="icon">📊</span>
+        <div class="stack" style="gap:4px">
+          <span>价格趋势</span>
+          <span class="desc">按日/周/月聚合，查看在市与缺货段</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">功能说明</h3>
+    <span class="chip">必读</span>
+  </div>
+  <div class="section-body">
+    <div class="stack" style="gap:12px">
+      <div>
+        <strong>📥 批量导入</strong><br>
+        <span class="muted">支持文本格式批量导入价格数据，包含试运行校验与 AI 提示词辅助。</span>
+      </div>
+      <div>
+        <strong>🛒 产品列表</strong><br>
+        <span class="muted">浏览和搜索所有产品，支持中英文名称检索，查看产品分类和观测历史。</span>
+      </div>
+      <div>
+        <strong>🏪 门店列表</strong><br>
+        <span class="muted">查看所有门店及其数据统计，包括观测天数和记录总数。</span>
+      </div>
+      <div>
+        <strong>📊 价格趋势</strong><br>
+        <span class="muted">分析特定产品在特定门店的价格走势，支持日/周/月聚合，可视化展示季节性和缺货段。</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<?php if ($storeCount > 0): ?>
+<div class="panel headered">
+  <div class="section-header">
+    <h3 class="section-title">门店概览</h3>
+    <span class="chip">近期开通</span>
+  </div>
+  <div class="section-body">
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>门店名称</th>
+            <th>观测天数</th>
+            <th>总观测数</th>
+            <th>创建时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach (array_slice($stores, 0, 5) as $store): ?>
+          <tr>
+            <td><?= htmlspecialchars($store['store_name']) ?></td>
+            <td><?= $store['days_observed'] ?></td>
+            <td><?= number_format($store['total_observations']) ?></td>
+            <td><?= substr($store['created_at'], 0, 10) ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php if ($storeCount > 5): ?>
+    <div style="text-align:right;margin-top:10px">
+      <a href="/prs/index.php?action=stores" class="muted">查看全部门店 →</a>
+    </div>
+    <?php endif; ?>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php render_footer(); ?>
