@@ -29,53 +29,69 @@ $apiBase = '/prs/index.php?action=ingest_save';
 $aiPrompt = "你是一个价格记录系统的数据解析助手。\n请根据我提供的图片内容，提取商品的价格信息，并严格按照我指定的格式输出。\n\n**输出格式要求 (使用 \"#@\" 作为分隔符):**\n\n1.  **首行 (Header):** 必须以日期和店名开头。格式为：\n    `[YYYY-MM-DD]#@[店名]#@`\n    例如: `2025-11-11#@Mercado Central#@`\n\n2.  **后续行 (Detail Blocks):** 每个商品信息占据一个空行分隔的块。块的第一个非键值对内容必须是商品的西班牙语名称 (name_es)。\n    - **必填信息**: 商品西班牙语名 (name_es)。\n    - **可选键值对**:\n        - `ud`: 单价 (€/ud)，例: `ud:0.38`\n        - `udp`: 单位重量 (克/ud)，例: `udp:190g` (注意：单位必须是 g)\n        - `pkg`: 公斤价 (€/kg)，例: `pkg:2.6`\n        - `zh`: 中文名，例: `zh:苹果金`\n        - `cat`: 类目 (fruit/seafood/dairy/unknown)，例: `cat:fruit`\n\n**请严格遵守格式，不要添加任何解释性文字或 markdown 块。**\n\n**示例输出格式:**\n2025-11-11#@Mercado Central#@\n\nManzana Golden#@ud:0.38#@udp:190g#@pkg:2#@\n\nPera Conferencia#@ud:0.43#@udp:166g#@pkg:2.6#@";
 
 ?>
+<div class="page-header">
+  <div>
+    <h2 class="page-title">批量导入</h2>
+    <p class="page-desc">粘贴文本即可导入，试运行结果在卡片内滚动展示，手机端也能舒适阅读。</p>
+  </div>
+  <div class="pill">📱 适配移动 · 不撑屏</div>
+</div>
+
 <div class="row">
   <div class="col">
-    <div class="stack">
-      <div class="kv"><label>AI模型（可选）</label><input id="aiModel" placeholder="例如: gpt-ocr / gemini-vision / manual"></div>
-      <div class="kv"><label>快速提示</label>
-        <div class="muted">首行写"日期 + 店名"，后面按块写明细。分隔符不限，自动识别（#@、||、## 等）。</div>
-      </div>
-      <textarea id="payload" class="code" placeholder="例：
+    <div class="card">
+      <div class="body stack">
+        <div class="kv"><label>AI模型（可选）</label><input id="aiModel" placeholder="例如: gpt-ocr / gemini-vision / manual"></div>
+        <div class="kv"><label>快速提示</label>
+          <div class="muted">首行写"日期 + 店名"，明细按块描述。分隔符不限，系统会自动识别（#@、||、## 等）。</div>
+        </div>
+        <textarea id="payload" class="code" placeholder="例：
 2025-11-11#@Mercado Central#@
 
 Manzana Golden#@ud:0.38#@udp:190g#@pkg:2#@
 
 pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@"></textarea>
-      <div class="toolbar">
-        <button class="btn secondary" id="btnSample">填入示例</button>
-        <div style="flex:1"></div>
-        <button class="btn" id="btnDry">试运行校验</button>
-        <button class="btn ok" id="btnCommit">正式入库</button>
-      </div>
+        <div class="toolbar">
+          <button class="btn secondary" id="btnSample">填入示例</button>
+          <div style="flex:1"></div>
+          <button class="btn" id="btnDry">试运行校验</button>
+          <button class="btn ok" id="btnCommit">正式入库</button>
+        </div>
 
-      <div class="kv" style="align-items:flex-start; margin-top: 16px;">
-        <label>AI 提示词</label>
-        <div class="stack" style="flex:1;width:100%">
-            <textarea id="aiPromptHelper" class="code" rows="10" readonly><?= htmlspecialchars($aiPrompt) ?></textarea>
-            <button class="btn secondary" id="btnCopyPrompt" style="max-width:120px;align-self:flex-end">复制提示词</button>
+        <div class="kv" style="align-items:flex-start; margin-top: 10px;">
+          <label>AI 提示词</label>
+          <div class="stack" style="flex:1;width:100%">
+              <textarea id="aiPromptHelper" class="code" rows="8" readonly><?= htmlspecialchars($aiPrompt) ?></textarea>
+              <div class="toolbar" style="justify-content:flex-end;margin-top:4px">
+                <div class="muted" style="font-size:12px">仅作参考，不依赖即可完成导入</div>
+                <button class="btn secondary" id="btnCopyPrompt" style="max-width:140px;flex:none">复制提示词</button>
+              </div>
+          </div>
         </div>
       </div>
-      </div>
+    </div>
   </div>
 
   <div class="col">
-    <div class="stack">
-      <div class="card" style="border-radius:12px;background:var(--accent);border:1px solid var(--border);padding:12px">
-        <div style="font-weight:600;margin-bottom:4px">📊 运行结果</div>
-        <div id="resSummary" class="muted" style="font-size:13px">待运行</div>
-      </div>
-      <div id="resWarnings" class="code" style="display:none;word-break:break-word"></div>
-      <div id="resTableWrap" class="table-wrapper" style="max-height:420px;display:none">
-        <div class="muted" style="font-size:11px;margin-bottom:4px;padding:0 4px">👆 向右滑动查看更多列</div>
-        <table class="table" id="resTable">
-          <thead>
-            <tr>
-              <th>#</th><th>ES名</th><th>ZH名</th><th>类目</th><th>€/kg</th><th>€/ud</th><th>g/ud</th><th>状态</th><th>幂等</th><th>图</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+    <div class="card">
+      <div class="body stack">
+        <div class="pill" style="width:100%;justify-content:space-between;font-size:13px">
+          <span>📊 运行结果</span>
+          <span class="inline-hint">试运行/入库都会在此展示</span>
+        </div>
+        <div id="resSummary" class="muted" style="font-size:14px">待运行</div>
+        <div id="resWarnings" class="code" style="display:none;word-break:break-word"></div>
+        <div id="resTableWrap" class="table-wrapper" style="display:none">
+          <div class="muted" style="font-size:11px;margin:4px 6px">👆 向右滑动查看更多列</div>
+          <table class="table" id="resTable">
+            <thead>
+              <tr>
+                <th>#</th><th>ES名</th><th>ZH名</th><th>类目</th><th>€/kg</th><th>€/ud</th><th>g/ud</th><th>状态</th><th>幂等</th><th>图</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

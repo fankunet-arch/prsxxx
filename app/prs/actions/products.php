@@ -26,35 +26,47 @@ render_header('PRS · 产品列表');
 $apiBase = '/prs/index.php?action=query_list_products';
 ?>
 <div class="stack" style="gap:16px">
-  <div class="toolbar">
-    <input id="inpSearch" type="text" placeholder="输入ES名/中文名检索" style="max-width:320px; flex:none;">
-    <button class="btn" id="btnSearch" style="max-width:120px; flex:none;">搜索</button>
-    <div style="flex:1"></div>
-    <div class="muted" id="summary"></div>
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">产品列表</h2>
+      <p class="page-desc">搜索或分页浏览产品，表格可横向滚动，手机端查看不挤压。</p>
+    </div>
+    <div class="pill">🔍 轻量检索</div>
   </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:600px">
-    <table class="table" id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>ES名称 (SKU)</th>
-          <th>基础名称</th>
-          <th>中文名称</th>
-          <th>类目</th>
-          <th>最近观测日</th>
-          <th>创建日期</th>
-        </tr>
-      </thead>
-      <tbody>
-        </tbody>
-    </table>
-  </div>
+  <div class="card">
+    <div class="body stack" style="gap:12px">
+      <div class="toolbar">
+        <input id="inpSearch" type="text" placeholder="输入ES名/中文名检索" style="max-width:320px; flex:none;">
+        <button class="btn" id="btnSearch" style="max-width:120px; flex:none;">搜索</button>
+        <div style="flex:1"></div>
+        <div class="muted" id="summary"></div>
+      </div>
 
-  <div class="toolbar" id="pagination" style="justify-content:flex-end; display:none;">
-    <button class="btn secondary" id="btnPrev">上一页</button>
-    <div class="muted" id="pageInfo" style="margin: 0 10px;"></div>
-    <button class="btn secondary" id="btnNext">下一页</button>
+      <div id="tableWrap" class="table-wrapper">
+        <table class="table" id="tbl">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>ES名称 (SKU)</th>
+              <th>基础名称</th>
+              <th>中文名称</th>
+              <th>类目</th>
+              <th>最近观测日</th>
+              <th>创建日期</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
+      </div>
+
+      <div class="toolbar" id="pagination" style="justify-content:flex-end; display:none;">
+        <button class="btn secondary" id="btnPrev">上一页</button>
+        <div class="muted" id="pageInfo" style="margin: 0 10px;"></div>
+        <button class="btn secondary" id="btnNext">下一页</button>
+      </div>
+    </div>
   </div>
 </div>
 

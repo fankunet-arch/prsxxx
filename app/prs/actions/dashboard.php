@@ -41,99 +41,87 @@ try {
 }
 ?>
 
-<div class="stack" style="gap: 24px; max-width: 1200px; margin: 0 auto;">
-  <!-- 欢迎区 -->
+<div class="stack" style="gap:20px; max-width:1220px; margin:0 auto;">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">欢迎使用 PRS 系统</h2>
+      <p class="page-desc">价格记录系统 (Price Recording System) · 统一的多端界面，桌面与移动端均可流畅操作。</p>
+    </div>
+    <div class="pill">✨ 现代化布局 · 自适应</div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <strong><?= $productCount ?></strong>
+      <div class="muted">产品总数</div>
+    </div>
+    <div class="stat-card">
+      <strong><?= $storeCount ?></strong>
+      <div class="muted">门店总数</div>
+    </div>
+    <div class="stat-card">
+      <strong><?= number_format($totalObs) ?></strong>
+      <div class="muted">价格观测总数</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="body">
-      <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">欢迎使用 PRS 系统</h2>
-      <p class="muted" style="margin: 0;">价格记录系统 (Price Recording System) - 多门店商品价格管理与分析平台</p>
-    </div>
-  </div>
-
-  <!-- 统计卡片 -->
-  <div class="row" style="gap: 16px;">
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #3aa6ff; margin-bottom: 8px;">
-          <?= $productCount ?>
+      <div class="page-header" style="margin-bottom:10px">
+        <div>
+          <h3 class="page-title" style="font-size:20px;margin-bottom:4px">快速入口</h3>
+          <p class="page-desc">常用操作集中呈现，移动端横向滚动同样易用。</p>
         </div>
-        <div class="muted">产品总数</div>
+        <span class="inline-hint">轻触卡片即可进入</span>
       </div>
-    </div>
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #30d158; margin-bottom: 8px;">
-          <?= $storeCount ?>
-        </div>
-        <div class="muted">门店总数</div>
-      </div>
-    </div>
-    <div class="col" style="flex: 1;">
-      <div class="card" style="text-align: center; padding: 24px;">
-        <div style="font-size: 48px; font-weight: 700; color: #ff9f0a; margin-bottom: 8px;">
-          <?= number_format($totalObs) ?>
-        </div>
-        <div class="muted">价格观测总数</div>
+      <div class="row" style="gap:12px">
+        <a href="/prs/index.php?action=ingest" class="btn" style="flex:1;text-align:center;text-decoration:none;padding:16px 14px">📥 批量导入</a>
+        <a href="/prs/index.php?action=products" class="btn secondary" style="flex:1;text-align:center;text-decoration:none;padding:16px 14px">🛒 产品列表</a>
+        <a href="/prs/index.php?action=stores" class="btn secondary" style="flex:1;text-align:center;text-decoration:none;padding:16px 14px">🏪 门店列表</a>
+        <a href="/prs/index.php?action=trends" class="btn secondary" style="flex:1;text-align:center;text-decoration:none;padding:16px 14px">📊 价格趋势</a>
       </div>
     </div>
   </div>
 
-  <!-- 快速导航 -->
   <div class="card">
     <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">快速导航</h3>
-      <div class="row" style="gap: 12px;">
-        <a href="/prs/index.php?action=ingest" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">📥</div>
-          <div>批量导入</div>
-        </a>
-        <a href="/prs/index.php?action=products" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">🛒</div>
-          <div>产品列表</div>
-        </a>
-        <a href="/prs/index.php?action=stores" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">🏪</div>
-          <div>门店列表</div>
-        </a>
-        <a href="/prs/index.php?action=trends" class="btn" style="flex: 1; text-align: center; text-decoration: none; padding: 16px;">
-          <div style="font-size: 24px; margin-bottom: 4px;">📊</div>
-          <div>价格趋势</div>
-        </a>
+      <div class="page-header" style="margin-bottom:8px">
+        <div>
+          <h3 class="page-title" style="font-size:20px;margin:0 0 4px">功能概览</h3>
+          <p class="page-desc">核心功能在桌面与手机端保持一致体验，试运行结果会在可滚动区域中展示，避免撑爆屏幕。</p>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- 功能说明 -->
-  <div class="card">
-    <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">功能说明</h3>
-      <div class="stack" style="gap: 12px;">
-        <div>
-          <strong>📥 批量导入</strong><br>
-          <span class="muted">支持文本格式批量导入价格数据，包含试运行校验和 AI 提示词辅助功能</span>
+      <div class="stack" style="gap:10px">
+        <div class="hero">
+          <div class="pill">📥 批量导入</div>
+          <div class="muted">文本导入 + 试运行校验，AI 提示词仅作为辅助可选项。</div>
         </div>
-        <div>
-          <strong>🛒 产品列表</strong><br>
-          <span class="muted">浏览和搜索所有产品，支持中英文名称检索，查看产品分类和观测历史</span>
+        <div class="hero">
+          <div class="pill">🛒 产品列表</div>
+          <div class="muted">快速检索产品与类目，支持中英文名称。</div>
         </div>
-        <div>
-          <strong>🏪 门店列表</strong><br>
-          <span class="muted">查看所有门店及其数据统计，包括观测天数和记录总数</span>
+        <div class="hero">
+          <div class="pill">🏪 门店列表</div>
+          <div class="muted">查看门店覆盖度与观测规模。</div>
         </div>
-        <div>
-          <strong>📊 价格趋势</strong><br>
-          <span class="muted">分析特定产品在特定门店的价格走势，支持日/周/月聚合，可视化展示季节性和缺货段</span>
+        <div class="hero">
+          <div class="pill">📊 价格趋势</div>
+          <div class="muted">聚合维度灵活的价格趋势图，移动端支持滑动查看。</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 最近活跃门店 -->
   <?php if ($storeCount > 0): ?>
   <div class="card">
     <div class="body">
-      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">门店概览</h3>
-      <div class="table-wrapper">
+      <div class="page-header" style="margin-bottom:8px">
+        <div>
+          <h3 class="page-title" style="font-size:20px;margin:0 0 4px">门店概览</h3>
+          <p class="page-desc">近期活跃门店，列表可横向滚动，移动端不会挤压内容。</p>
+        </div>
+      </div>
+      <div class="table-wrapper" style="max-height:360px">
         <table class="table">
           <thead>
             <tr>
@@ -156,7 +144,7 @@ try {
         </table>
       </div>
       <?php if ($storeCount > 5): ?>
-      <div style="text-align: center; margin-top: 12px;">
+      <div style="text-align:center; margin-top:10px;">
         <a href="/prs/index.php?action=stores" class="muted">查看全部门店 →</a>
       </div>
       <?php endif; ?>

@@ -26,24 +26,36 @@ render_header('PRS · 门店列表');
 $apiBase = '/prs/index.php?action=query_list_stores';
 ?>
 <div class="stack" style="gap:16px">
-  <div class="toolbar">
-    <div class="muted" id="summary"></div>
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">门店列表</h2>
+      <p class="page-desc">快速了解覆盖门店，滚动表格适配桌面与手机。</p>
+    </div>
+    <div class="pill">🏬 概览</div>
   </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:600px">
-    <table class="table" id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>门店名称</th>
-          <th>观测天数</th>
-          <th>总观测数</th>
-          <th>创建日期</th>
-        </tr>
-      </thead>
-      <tbody>
-        </tbody>
-    </table>
+  <div class="card">
+    <div class="body stack" style="gap:12px">
+      <div class="toolbar">
+        <div class="muted" id="summary"></div>
+      </div>
+
+      <div id="tableWrap" class="table-wrapper">
+        <table class="table" id="tbl">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>门店名称</th>
+              <th>观测天数</th>
+              <th>总观测数</th>
+              <th>创建日期</th>
+            </tr>
+          </thead>
+          <tbody>
+            </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 

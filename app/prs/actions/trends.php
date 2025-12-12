@@ -30,51 +30,67 @@ $imgBase = (function(){
 })();
 ?>
 <div class="stack" style="gap:16px">
-  <div class="row">
-    <div class="col">
-      <div class="kv"><label>产品</label>
-        <input id="inpProd" list="dlProd" placeholder="输入ES名/中文检索"><datalist id="dlProd"></datalist>
-        <div class="muted" id="prodInfo"></div>
-      </div>
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">价格趋势</h2>
+      <p class="page-desc">选择产品与门店后查询，图表与表格均可在移动端滑动查看。</p>
     </div>
-    <div class="col">
-      <div class="kv"><label>门店</label>
-        <input id="inpStore" list="dlStore" placeholder="输入门店名检索"><datalist id="dlStore"></datalist>
-      </div>
-    </div>
+    <div class="pill">📈 多端可视</div>
   </div>
 
-  <div class="row">
-    <div class="col">
-      <div class="kv"><label>时间</label>
-        <input id="from" type="date"> 至 <input id="to" type="date" style="max-width:200px">
+  <div class="card">
+    <div class="body stack" style="gap:12px">
+      <div class="row">
+        <div class="col">
+          <div class="kv"><label>产品</label>
+            <input id="inpProd" list="dlProd" placeholder="输入ES名/中文检索"><datalist id="dlProd"></datalist>
+            <div class="muted" id="prodInfo"></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="kv"><label>门店</label>
+            <input id="inpStore" list="dlStore" placeholder="输入门店名检索"><datalist id="dlStore"></datalist>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="col">
-      <div class="kv"><label>聚合</label>
-        <select id="agg">
-          <option value="day">按日</option>
-          <option value="week">按周</option>
-          <option value="month">按月</option>
-        </select>
-        <div style="flex:1"></div>
-        <button class="btn" id="btnQuery" style="max-width:160px">查询</button>
+
+      <div class="row">
+        <div class="col">
+          <div class="kv"><label>时间</label>
+            <input id="from" type="date"> 至 <input id="to" type="date" style="max-width:200px">
+          </div>
+        </div>
+        <div class="col">
+          <div class="kv"><label>聚合</label>
+            <select id="agg">
+              <option value="day">按日</option>
+              <option value="week">按周</option>
+              <option value="month">按月</option>
+            </select>
+            <div style="flex:1"></div>
+            <button class="btn" id="btnQuery" style="max-width:160px">查询</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="card" style="border-radius:16px">
     <div class="body">
-      <canvas id="chart" width="960" height="320" style="width:100%;height:auto;max-height:320px"></canvas>
+      <canvas id="chart" width="960" height="320" style="width:100%;height:auto;max-height:360px"></canvas>
       <div class="muted" id="hint" style="margin-top:6px;font-size:12px">浅绿：当月在市；淡红：缺货段；折线：€/kg</div>
     </div>
   </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:420px;display:none">
-    <table class="table" id="tbl">
-      <thead><tr id="thead"></tr></thead>
-      <tbody></tbody>
-    </table>
+  <div class="card" id="tableWrap" style="display:none">
+    <div class="body">
+      <div class="table-wrapper" style="margin-top:2px">
+        <table class="table" id="tbl">
+          <thead><tr id="thead"></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
