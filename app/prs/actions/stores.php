@@ -10,8 +10,6 @@ if (!defined('PRS_ENTRY')) {
     die('Access denied');
 }
 
-
-
 // 加载 header 布局
 $header = PRS_VIEW_PATH . '/layouts/header.php';
 if (!is_file($header)) {
@@ -26,24 +24,31 @@ render_header('PRS · 门店列表');
 $apiBase = '/prs/index.php?action=query_list_stores';
 ?>
 <div class="stack" style="gap:16px">
-  <div class="toolbar">
-    <div class="muted" id="summary"></div>
+  <div class="panel" style="background:var(--accent);">
+    <div class="section-title">🏪 门店列表 · 一目了然</div>
+    <div class="muted">表格支持横向/纵向滚动，移动端不会溢出；统计 pill 展示总量，便于快速查看活跃度。</div>
   </div>
 
-  <div id="tableWrap" class="table-wrapper" style="max-height:600px">
-    <table class="table" id="tbl">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>门店名称</th>
-          <th>观测天数</th>
-          <th>总观测数</th>
-          <th>创建日期</th>
-        </tr>
-      </thead>
-      <tbody>
-        </tbody>
-    </table>
+  <div class="panel">
+    <div class="toolbar">
+      <div class="pill" id="summary">加载中</div>
+    </div>
+    <div class="muted" style="font-size:12px;margin-bottom:8px">👆 在手机端左右滑动，表格高度自动约束，试运行展示不会撑满屏幕。</div>
+    <div id="tableWrap" class="table-wrapper" style="max-height:600px">
+      <table class="table" id="tbl">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>门店名称</th>
+            <th>观测天数</th>
+            <th>总观测数</th>
+            <th>创建日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -95,7 +100,6 @@ $apiBase = '/prs/index.php?action=query_list_stores';
     toast('查询完成', 'ok', 1200);
   }
 
-  // 首次加载
   (async function() {
     const rows = await fetchStores();
     fillTable(rows);
