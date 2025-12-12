@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * PRS Ingest Controller (Phase-A)
+ * PRS Ingest Action (Phase-A)
  * - 解析简单文本：头部（日期+店名）+ 多个明细块
  * - 支持分隔符：优先识别 "#@"，亦兼容 "||"、"##"；块间允许空行
  * - 键值：ud / udp / pkg / img / zh / cat / st
@@ -12,7 +12,7 @@ declare(strict_types=1);
  * 依赖：/app/prs/config_prs/env_prs.php 提供 cfg() 数组
  */
 
-final class PRS_Ingest_Controller
+final class PRS_Ingest_Action
 {
     private \PDO $pdo;
 
@@ -183,23 +183,23 @@ final class PRS_Ingest_Controller
         $stmt->execute([$storeId, $dateLocal, $sha, $aiModel, $nowUtc]);
         return (int)$this->pdo->lastInsertId();
     }
-    
+
     // [NEW/FIX] 剥离尺寸/包装后缀，得到基础名称
     private function derive_base_name(string $nameEs): string
     {
         $name = trim($nameEs);
-        
+
         // 1. 移除重量/容量后缀 (e.g., 5 KG., 500 GR, 1,5, 2 KG.)
         // 匹配：空格 + 数字/逗号/点 + (KG|GR|L|LT|G) + 可选的标点/空格
         $name = preg_replace('/\s+[\d,\.]{1,}(\s*(KG|GR|L|LT|G)[.\s]*)+$/i', '', $name);
         // 匹配：空格 + 数字/逗号/点（如 Mandarina Hoja 1,5, Castana 500 GR）
-        $name = preg_replace('/\s+[\d,\.]{1,3}$/i', '', $name); 
-        
+        $name = preg_replace('/\s+[\d,\.]{1,3}$/i', '', $name);
+
         // 2. 移除包装/形态后缀 (e.g., Bolsa, Bandeja, Granel, Band)
         $suffixes = ['Bolsa', 'Band', 'Bandeja', 'Granel', 'En Malla', 'Bolsita', 'Malla'];
         $pattern = '/\s+(' . implode('|', $suffixes) . ')\s*$/i';
         $name = preg_replace($pattern, '', $name);
-        
+
         // 3. 移除特殊规格描述
         $name = preg_replace('/\s+De Mesa\s*$/i', '', $name); // Uva Blanca de Mesa -> Uva Blanca
         $name = preg_replace('/\s+Hoja\s*$/i', '', $name); // Mandarina Hoja -> Mandarina
@@ -210,18 +210,18 @@ final class PRS_Ingest_Controller
     private function ensure_product(string $nameEs, string $category, ?string $nameZh, string $nowUtc): int
     {
         $baseNameEs = $this->derive_base_name($nameEs);
-        
+
         // 查询时，我们仍然使用完整的 name_es 和 category 来确定是否是同一 SKU
         $stmt = $this->pdo->prepare("SELECT id, base_name_es FROM prs_products WHERE name_es=? AND category=?");
         $stmt->execute([$nameEs, $category]);
         $row = $stmt->fetch();
-        if ($row) { 
+        if ($row) {
             // 如果已存在，但 base_name_es 可能是 NULL（历史数据），则尝试更新
             if ($row['base_name_es'] === null || $row['base_name_es'] !== $baseNameEs) {
                  $updateStmt = $this->pdo->prepare("UPDATE prs_products SET base_name_es=?, updated_at=? WHERE id=?");
                  $updateStmt->execute([$baseNameEs, $nowUtc, $row['id']]);
             }
-            return (int)$row['id']; 
+            return (int)$row['id'];
         }
 
         // 插入时，同时插入完整的 name_es 和计算后的 base_name_es

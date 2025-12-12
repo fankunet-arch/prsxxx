@@ -1,14 +1,13 @@
 <?php
 declare(strict_types=1);
 
-$header = __DIR__ . '/../../../app/prs/views/layouts/header.php';
+$header = __DIR__ . '/../../app/prs/views/layouts/header.php';
 if (!is_file($header)) { http_response_code(500); echo "Missing header"; exit; }
 require_once $header;
 render_header('PRS · 价格趋势');
 
-$apiBase = '/prs/api/prs_api_gateway.php?res=query';
 $imgBase = (function(){
-    require_once __DIR__.'/../../../app/prs/config_prs/env_prs.php';
+    require_once __DIR__.'/../../app/prs/config_prs/env_prs.php';
     $c = cfg();
     return $c['prs_images_base_url'] ?? '/prs/assets/img/products/';
 })();
@@ -65,7 +64,6 @@ $imgBase = (function(){
 <script>
 (() => {
   const $ = s => document.querySelector(s);
-  const apiBase = <?= json_encode($apiBase) ?>;
 
   let selectedProd = null, selectedStore = null;
 
@@ -77,7 +75,7 @@ $imgBase = (function(){
     const list = $('#dlProd'); list.innerHTML = '';
     selectedProd = null; $('#prodInfo').textContent = '';
     if (!q) return;
-    const res = await fetch(`${apiBase}&act=products_search&q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/prs/api/query_products_search.php?q=${encodeURIComponent(q)}`);
     const data = await res.json().catch(()=>({}));
     (data.items||[]).forEach(it => {
       const opt = document.createElement('option');
@@ -100,7 +98,7 @@ $imgBase = (function(){
     const list = $('#dlStore'); list.innerHTML = '';
     selectedStore = null;
     if (!q) return;
-    const res = await fetch(`${apiBase}&act=stores_search&q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/prs/api/query_stores_search.php?q=${encodeURIComponent(q)}`);
     const data = await res.json().catch(()=>({}));
     (data.items||[]).forEach(it=>{
       const opt = document.createElement('option');
@@ -128,7 +126,7 @@ $imgBase = (function(){
       body.set('product_name', prodText);
       body.set('store_name', storeText);
 
-      const res = await fetch(`${apiBase}&act=resolve`, {
+      const res = await fetch('/prs/api/query_resolve.php', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'},
         body: body.toString()
@@ -152,7 +150,7 @@ $imgBase = (function(){
     }
 
     if (!selectedProd || !selectedStore) {
-      toast('请先选择“产品”和“门店”', 'warn');
+      toast('请先选择"产品"和"门店"', 'warn');
       return;
     }
 
@@ -161,10 +159,10 @@ $imgBase = (function(){
     const to   = $('#to').value   || '';
 
     const qs = (o)=>Object.entries(o).filter(([,v])=>v!==''&&v!=null).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
-    const base = `${apiBase}&product_id=${selectedProd.id}&store_id=${selectedStore.id}`;
-    const uTs  = `${base}&act=timeseries&${qs({from,to,agg})}`;
-    const uSn  = `${base}&act=season&${qs({from_ym: from?from.slice(0,7):'', to_ym: to?to.slice(0,7):''})}`;
-    const uSo  = `${base}&act=stockouts&${qs({from,to})}`;
+    const base = `product_id=${selectedProd.id}&store_id=${selectedStore.id}`;
+    const uTs  = `/prs/api/query_timeseries.php?${base}&${qs({from,to,agg})}`;
+    const uSn  = `/prs/api/query_season.php?${base}&${qs({from_ym: from?from.slice(0,7):'', to_ym: to?to.slice(0,7):''})}`;
+    const uSo  = `/prs/api/query_stockouts.php?${base}&${qs({from,to})}`;
 
     const [tsRes, snRes, soRes] = await Promise.all([fetch(uTs), fetch(uSn), fetch(uSo)]);
     const [ts, sn, so] = await Promise.all([tsRes.json(), snRes.json(), soRes.json()]);

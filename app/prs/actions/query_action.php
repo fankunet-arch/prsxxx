@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * PRS Query Controller
+ * PRS Query Action
  * - 产品/门店搜索（联想）
  * - 价格时序（day|week|month），€/kg = COALESCE(pkg, ud/udp)
  * - 月在市（当月>=1日有观测即在市）
@@ -14,7 +14,7 @@ declare(strict_types=1);
  * - [FIX] products_search 返回 base_name_es
  */
 
-final class PRS_Query_Controller
+final class PRS_Query_Action
 {
     private \PDO $pdo;
 
@@ -157,8 +157,8 @@ final class PRS_Query_Controller
 
         // 查询分页数据
         $sql = "
-            SELECT 
-                p.id, p.name_es, p.base_name_es, p.name_zh, p.category, 
+            SELECT
+                p.id, p.name_es, p.base_name_es, p.name_zh, p.category,
                 MAX(o.date_local) AS last_observed_date,
                 p.created_at
             FROM prs_products p
@@ -168,7 +168,7 @@ final class PRS_Query_Controller
             ORDER BY p.id DESC
             LIMIT ? OFFSET ?
         ";
-        
+
         $stmt = $this->pdo->prepare($sql);
         $paramIndex = 1; // 用于绑定参数的索引计数器
 
@@ -184,10 +184,10 @@ final class PRS_Query_Controller
         $stmt->bindValue($paramIndex++, $offset, \PDO::PARAM_INT);
 
         $stmt->execute();
-        
+
         return [
-            'total' => $totalCount, 
-            'page'  => $page, 
+            'total' => $totalCount,
+            'page'  => $page,
             'pageSize' => $pageSize,
             'items' => $stmt->fetchAll() ?: []
         ];
@@ -197,8 +197,8 @@ final class PRS_Query_Controller
     public function list_stores(): array
     {
         $sql = "
-            SELECT 
-                s.id, s.store_name, s.created_at, 
+            SELECT
+                s.id, s.store_name, s.created_at,
                 COUNT(DISTINCT o.date_local) AS days_observed,
                 COUNT(o.id) AS total_observations
             FROM prs_stores s

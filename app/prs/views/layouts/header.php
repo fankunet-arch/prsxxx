@@ -81,10 +81,10 @@ if (!function_exists('render_header')) {
       <div class="hd">
         <div class="badge">PRS · Price Recording System</div>
         <div style="margin-left:auto" class="muted">
-            <a href="/prs/console/ingest_text.php">导入</a>
-            <a href="/prs/console/trends.php" style="margin-left:16px">价格趋势</a>
-            <a href="/prs/console/products_browser.php" style="margin-left:16px">产品列表</a>
-            <a href="/prs/console/stores_browser.php" style="margin-left:16px">门店列表</a>
+            <a href="/prs/ingest_text.php">导入</a>
+            <a href="/prs/trends.php" style="margin-left:16px">价格趋势</a>
+            <a href="/prs/products_browser.php" style="margin-left:16px">产品列表</a>
+            <a href="/prs/stores_browser.php" style="margin-left:16px">门店列表</a>
         </div>
       </div>
       <div class="body">

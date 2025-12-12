@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-$header = __DIR__ . '/../../../app/prs/views/layouts/header.php';
+$header = __DIR__ . '/../../app/prs/views/layouts/header.php';
 if (!is_file($header)) { http_response_code(500); echo "Missing header"; exit; }
 require_once $header;
 render_header('PRS · 产品列表');
 
-$apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
+$apiBase = '/prs/api/query_list_products.php';
 ?>
 <div class="stack" style="gap:16px">
   <div class="toolbar">
@@ -33,7 +33,7 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
         </tbody>
     </table>
   </div>
-  
+
   <div class="toolbar" id="pagination" style="justify-content:flex-end; display:none;">
     <button class="btn secondary" id="btnPrev">上一页</button>
     <div class="muted" id="pageInfo" style="margin: 0 10px;"></div>
@@ -49,8 +49,8 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
   let currentPage = 1;
 
   async function fetchData(page, q = '') {
-    const url = `${apiBase}&page=${page}&size=${PAGE_SIZE}&q=${encodeURIComponent(q)}`;
-    
+    const url = `${apiBase}?page=${page}&size=${PAGE_SIZE}&q=${encodeURIComponent(q)}`;
+
     try {
       const res = await fetch(url);
       const data = await res.json();
@@ -66,14 +66,14 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
       return { items: [], total: 0 };
     }
   }
-  
+
   function fillTable(data) {
     const tb = $('#tbl tbody');
     tb.innerHTML = '';
-    
+
     if (data.items.length === 0) {
       // 增加了一列，需要更新 colspan="7"
-      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;">没有找到产品数据</td></tr>'; 
+      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;">没有找到产品数据</td></tr>';
       $('#summary').textContent = '总计 0 条记录';
       $('#pagination').style.display = 'none';
       return;
@@ -97,7 +97,7 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
     // 更新总结信息
     const totalPages = Math.ceil(data.total / PAGE_SIZE);
     $('#summary').textContent = `总计 ${data.total} 条记录，当前第 ${data.page} 页 / 共 ${totalPages} 页`;
-    
+
     // 更新分页控件
     currentPage = data.page;
     $('#pageInfo').textContent = `${currentPage} / ${totalPages}`;
@@ -112,7 +112,7 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_products';
     fillTable(data);
     toast('查询完成', 'ok', 1200);
   }
-  
+
   // 首次加载
   (async function() {
     const data = await fetchData(1);

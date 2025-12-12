@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-$header = __DIR__ . '/../../../app/prs/views/layouts/header.php';
+$header = __DIR__ . '/../../app/prs/views/layouts/header.php';
 if (!is_file($header)) { http_response_code(500); echo "Missing header"; exit; }
 require_once $header;
 render_header('PRS · 门店列表');
 
-$apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_stores';
+$apiBase = '/prs/api/query_list_stores.php';
 ?>
 <div class="stack" style="gap:16px">
   <div class="toolbar">
@@ -34,7 +34,7 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_stores';
 (() => {
   const $ = s => document.querySelector(s);
   const apiBase = <?= json_encode($apiBase) ?>;
-  
+
   async function fetchStores() {
     try {
       const res = await fetch(apiBase);
@@ -51,11 +51,11 @@ $apiBase = '/prs/api/prs_api_gateway.php?res=query&act=list_stores';
       return [];
     }
   }
-  
+
   function fillTable(rows) {
     const tb = $('#tbl tbody');
     tb.innerHTML = '';
-    
+
     if (rows.length === 0) {
       tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">没有找到门店数据</td></tr>';
       $('#summary').textContent = '总计 0 家门店';
