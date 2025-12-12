@@ -68,17 +68,23 @@ pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@"></textarea>
 
     <div class="col">
       <div class="panel" style="background:linear-gradient(180deg,rgba(58,166,255,.12),rgba(58,166,255,.06));">
-        <div class="panel-title">📊 运行结果</div>
-        <div class="muted" style="margin-bottom:4px">试运行与正式入库的摘要、警告与表格均会在此呈现。</div>
+        <div class="panel-title" style="justify-content:space-between;gap:12px;align-items:center">
+          <span>📊 运行结果</span>
+          <div class="toolbar" style="gap:6px;flex-wrap:nowrap">
+            <button class="btn secondary" id="btnToggleResult" style="min-width:96px;padding:10px 12px">折叠结果</button>
+            <button class="btn secondary" id="btnCompact" style="min-width:96px;padding:10px 12px">紧凑模式</button>
+          </div>
+        </div>
+        <div class="muted" style="margin-bottom:4px">试运行与正式入库的摘要、警告与表格均会在此呈现。可折叠、可紧凑，避免撑满屏幕。</div>
         <div class="chip-row" style="margin-bottom:8px">
           <span class="chip">自适应高度</span>
           <span class="chip">移动端可滑动</span>
-          <span class="chip">表格不撑屏</span>
+          <span class="chip">可折叠/紧凑</span>
         </div>
         <div id="resSummary" class="muted" style="font-size:13px">待运行</div>
       </div>
-      <div id="resWarnings" class="code" style="display:none;word-break:break-word;margin-top:10px"></div>
-      <div id="resTableWrap" class="table-wrapper" style="max-height:min(420px,55vh);display:none;margin-top:10px">
+      <div id="resWarnings" class="code" style="display:none;word-break:break-word;margin-top:10px;max-height:160px;overflow:auto"></div>
+      <div id="resTableWrap" class="table-wrapper" style="max-height:360px;display:none;margin-top:10px">
         <div class="muted" style="font-size:11px;margin-bottom:4px;padding:0 4px">👆 在手机端左右滑动或上下滚动，避免撑满屏幕</div>
         <table class="table" id="resTable">
           <thead>
@@ -125,6 +131,34 @@ pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@`;
   });
 
   // 用表单方式提交，避免 WAF 拦截 text/plain
+  const syncHeight = () => {
+    const wrap = document.querySelector('#resTableWrap');
+    if (!wrap) return;
+    const compact = wrap.dataset.compact === '1';
+    const base = window.innerWidth <= 860 ? (compact ? 220 : 260) : (compact ? 300 : 360);
+    wrap.style.maxHeight = `${base}px`;
+  };
+
+  const toggleResult = () => {
+    const wrap = document.querySelector('#resTableWrap');
+    const warn = document.querySelector('#resWarnings');
+    const summary = document.querySelector('#resSummary');
+    const btn = document.querySelector('#btnToggleResult');
+    const isHidden = wrap.style.display === 'none';
+    const next = isHidden ? 'block' : 'none';
+    wrap.style.display = next;
+    warn.style.display = next;
+    summary.style.opacity = next === 'none' ? .65 : 1;
+    btn.textContent = next === 'none' ? '展开结果' : '折叠结果';
+  };
+
+  const toggleCompact = () => {
+    const wrap = document.querySelector('#resTableWrap');
+    wrap.dataset.compact = wrap.dataset.compact === '1' ? '0' : '1';
+    document.querySelector('#btnCompact').textContent = wrap.dataset.compact === '1' ? '取消紧凑' : '紧凑模式';
+    syncHeight();
+  };
+
   const callAPI = async (dryRun) => {
     const txt = document.querySelector('#payload').value.trim();
     const ai  = document.querySelector('#aiModel').value.trim();
@@ -197,12 +231,14 @@ pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@`;
         `;
         tb.appendChild(tr);
       });
+      resTableWrap.dataset.compact = resTableWrap.dataset.compact || '0';
       resTableWrap.style.display = 'block';
+      syncHeight();
       setTimeout(() => {
         if (window.innerWidth <= 860) {
           resSummary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-      }, 100);
+      }, 80);
     } else {
       resTableWrap.style.display = 'none';
     }
@@ -211,6 +247,10 @@ pera cinferebcia#@ud:0.43#@udp:166g#@pkg:2.6#@`;
   $('#btnDry').addEventListener('click', () => callAPI(true));
   $('#btnCommit').addEventListener('click', () => callAPI(false));
   $('#btnSample').addEventListener('click', fillSample);
+  $('#btnToggleResult').addEventListener('click', toggleResult);
+  $('#btnCompact').addEventListener('click', toggleCompact);
+  window.addEventListener('resize', syncHeight);
+  syncHeight();
 })();
 </script>
 <?php render_footer(); ?>
