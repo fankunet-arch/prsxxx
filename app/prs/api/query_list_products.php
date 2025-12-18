@@ -15,9 +15,10 @@ try {
     $page = (int)($_GET['page'] ?? 1);
     $size = (int)($_GET['size'] ?? 20);
     $q    = (string)($_GET['q'] ?? '');
+    $category = (string)($_GET['category'] ?? '');
 
     $controller = new PRS_Query_Controller();
-    $data = $controller->list_products($page, $size, $q);
+    $data = $controller->list_products($page, $size, $q, $category);
 
     prs_json_response(true, $data);
 } catch (Throwable $e) {

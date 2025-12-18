@@ -32,22 +32,33 @@ $imgBase = (function(){
 <div class="stack" style="gap:16px">
   <div class="row">
     <div class="col">
-      <div class="kv"><label>产品</label>
-        <input id="inpProd" list="dlProd" placeholder="输入ES名/中文检索"><datalist id="dlProd"></datalist>
-        <div class="muted" id="prodInfo"></div>
+      <div class="kv"><label>产品类别</label>
+        <select id="selCategory">
+          <option value="">-- 全部类别 --</option>
+        </select>
       </div>
     </div>
     <div class="col">
-      <div class="kv"><label>门店</label>
-        <input id="inpStore" list="dlStore" placeholder="输入门店名检索"><datalist id="dlStore"></datalist>
+      <div class="kv"><label>产品</label>
+        <input id="inpProd" list="dlProd" placeholder="点击选择或输入搜索"><datalist id="dlProd"></datalist>
+        <div class="muted" id="prodInfo"></div>
       </div>
     </div>
   </div>
 
   <div class="row">
     <div class="col">
+      <div class="kv"><label>门店</label>
+        <input id="inpStore" list="dlStore" placeholder="点击选择或输入搜索"><datalist id="dlStore"></datalist>
+      </div>
+    </div>
+    <div class="col"></div>
+  </div>
+
+  <div class="row">
+    <div class="col">
       <div class="kv"><label>时间</label>
-        <input id="from" type="date"> 至 <input id="to" type="date" style="max-width:200px">
+        <input id="from" type="date" title="起始日期"> 至 <input id="to" type="date" style="max-width:200px" title="截止日期">
       </div>
     </div>
     <div class="col">
@@ -84,50 +95,205 @@ $imgBase = (function(){
   const apiBase = <?= json_encode($apiBase) ?>;
 
   let selectedProd = null, selectedStore = null;
+  let allProducts = []; // 缓存所有产品
+  let allStores = []; // 缓存所有门店
 
-  // --- 联想（保持） ---
-  const debounce = (fn, ms=250) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);}};
+  // --- 初始化：加载类别和门店 ---
+  (async function init() {
+    // 设置日期选择的最大值为今天
+    const today = new Date().toISOString().split('T')[0];
+    $('#from').max = today;
+    $('#to').max = today;
 
-  $('#inpProd').addEventListener('input', debounce(async e => {
-    const q = e.target.value.trim();
-    const list = $('#dlProd'); list.innerHTML = '';
-    selectedProd = null; $('#prodInfo').textContent = '';
-    if (!q) return;
-    const res = await fetch(`${apiBase}products_search&q=${encodeURIComponent(q)}`);
-    const data = await res.json().catch(()=>({}));
-    (data.items||[]).forEach(it => {
-      const opt = document.createElement('option');
-      opt.value = `${it.name_es}`;
-      opt.label = `#${it.id} · ${it.category}${it.name_zh ? ' · '+it.name_zh : ''}`;
-      opt.dataset.pid = it.id;
-      list.appendChild(opt);
-    });
-  }, 250));
+    // 设置默认日期：过去30天到今天
+    const from30DaysAgo = new Date();
+    from30DaysAgo.setDate(from30DaysAgo.getDate() - 30);
+    $('#from').value = from30DaysAgo.toISOString().split('T')[0];
+    $('#to').value = today;
 
-  $('#inpProd').addEventListener('change', e=>{
-    const v = e.target.value.trim();
-    const hit = Array.from($('#dlProd').options).find(o => o.value === v);
-    selectedProd = hit ? {id: parseInt(hit.dataset.pid,10), name: v} : null;
-    $('#prodInfo').textContent = hit ? hit.label : '';
+    // 加载类别
+    try {
+      const res = await fetch(`${apiBase}categories`);
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.data && data.data.categories) {
+        const sel = $('#selCategory');
+        data.data.categories.forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat;
+          opt.textContent = cat;
+          sel.appendChild(opt);
+        });
+      }
+    } catch (e) { console.error('加载类别失败:', e); }
+
+    // 加载所有门店
+    try {
+      const res = await fetch(`${apiBase}list_stores`);
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.data && data.data.rows) {
+        allStores = data.data.rows;
+      }
+    } catch (e) { console.error('加载门店失败:', e); }
+  })();
+
+  // --- 时间选择验证 ---
+  $('#from').addEventListener('change', e => {
+    const fromDate = e.target.value;
+    const toDate = $('#to').value;
+    const today = new Date().toISOString().split('T')[0];
+
+    // 起始日期不能晚于今天
+    if (fromDate > today) {
+      toast('起始日期不能晚于今天', 'warn');
+      e.target.value = today;
+      return;
+    }
+
+    // 如果截止日期已设置，起始日期不能晚于截止日期
+    if (toDate && fromDate > toDate) {
+      toast('起始日期不能晚于截止日期', 'warn');
+      e.target.value = toDate;
+    }
+
+    // 更新截止日期的最小值
+    $('#to').min = fromDate;
   });
 
-  $('#inpStore').addEventListener('input', debounce(async e=>{
-    const q = e.target.value.trim();
-    const list = $('#dlStore'); list.innerHTML = '';
-    selectedStore = null;
-    if (!q) return;
-    const res = await fetch(`${apiBase}stores_search&q=${encodeURIComponent(q)}`);
-    const data = await res.json().catch(()=>({}));
-    (data.items||[]).forEach(it=>{
+  $('#to').addEventListener('change', e => {
+    const fromDate = $('#from').value;
+    const toDate = e.target.value;
+    const today = new Date().toISOString().split('T')[0];
+
+    // 截止日期不能晚于今天
+    if (toDate > today) {
+      toast('截止日期不能晚于今天', 'warn');
+      e.target.value = today;
+      return;
+    }
+
+    // 如果起始日期已设置，截止日期不能早于起始日期
+    if (fromDate && toDate < fromDate) {
+      toast('截止日期不能早于起始日期', 'warn');
+      e.target.value = fromDate;
+    }
+  });
+
+  // --- 类别选择改变时，加载该类别的产品 ---
+  $('#selCategory').addEventListener('change', async e => {
+    const category = e.target.value;
+    const list = $('#dlProd');
+    list.innerHTML = '';
+    allProducts = [];
+    selectedProd = null;
+    $('#prodInfo').textContent = '';
+    $('#inpProd').value = '';
+
+    if (!category) {
+      $('#inpProd').placeholder = '请先选择类别';
+      return;
+    }
+
+    $('#inpProd').placeholder = '点击选择或输入搜索';
+
+    try {
+      const res = await fetch(`${apiBase}products_by_category&category=${encodeURIComponent(category)}`);
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.data && data.data.items) {
+        allProducts = data.data.items;
+        updateProductDatalist(allProducts);
+      }
+    } catch (e) { console.error('加载产品失败:', e); }
+  });
+
+  // 更新产品 datalist
+  function updateProductDatalist(products) {
+    const list = $('#dlProd');
+    list.innerHTML = '';
+    products.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.name_es;
+      opt.label = `#${it.id}${it.name_zh ? ' · '+it.name_zh : ''}`;
+      opt.dataset.pid = it.id;
+      opt.dataset.category = it.category;
+      opt.dataset.namezh = it.name_zh || '';
+      list.appendChild(opt);
+    });
+  }
+
+  // --- 产品输入框：点击时显示所有，输入时过滤 ---
+  $('#inpProd').addEventListener('focus', e => {
+    if (allProducts.length > 0) {
+      updateProductDatalist(allProducts);
+    }
+  });
+
+  $('#inpProd').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    selectedProd = null;
+    $('#prodInfo').textContent = '';
+
+    if (!q || allProducts.length === 0) {
+      if (allProducts.length > 0) updateProductDatalist(allProducts);
+      return;
+    }
+
+    // 过滤产品
+    const filtered = allProducts.filter(p =>
+      p.name_es.toLowerCase().includes(q) ||
+      (p.name_zh && p.name_zh.toLowerCase().includes(q))
+    );
+    updateProductDatalist(filtered);
+  });
+
+  $('#inpProd').addEventListener('change', e => {
+    const v = e.target.value.trim();
+    const hit = Array.from($('#dlProd').options).find(o => o.value === v);
+    if (hit) {
+      selectedProd = {id: parseInt(hit.dataset.pid,10), name: v};
+      $('#prodInfo').textContent = `${hit.label} · ${hit.dataset.category}`;
+    } else {
+      selectedProd = null;
+      $('#prodInfo').textContent = '';
+    }
+  });
+
+  // 更新门店 datalist
+  function updateStoreDatalist(stores) {
+    const list = $('#dlStore');
+    list.innerHTML = '';
+    stores.forEach(it => {
       const opt = document.createElement('option');
       opt.value = it.store_name;
       opt.label = `#${it.id}`;
       opt.dataset.sid = it.id;
       list.appendChild(opt);
     });
-  }, 250));
+  }
 
-  $('#inpStore').addEventListener('change', e=>{
+  // --- 门店输入框：点击时显示所有，输入时过滤 ---
+  $('#inpStore').addEventListener('focus', e => {
+    if (allStores.length > 0) {
+      updateStoreDatalist(allStores);
+    }
+  });
+
+  $('#inpStore').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    selectedStore = null;
+
+    if (!q || allStores.length === 0) {
+      if (allStores.length > 0) updateStoreDatalist(allStores);
+      return;
+    }
+
+    // 过滤门店
+    const filtered = allStores.filter(s =>
+      s.store_name.toLowerCase().includes(q)
+    );
+    updateStoreDatalist(filtered);
+  });
+
+  $('#inpStore').addEventListener('change', e => {
     const v = e.target.value.trim();
     const hit = Array.from($('#dlStore').options).find(o => o.value === v);
     selectedStore = hit ? {id: parseInt(hit.dataset.sid,10), name: v} : null;

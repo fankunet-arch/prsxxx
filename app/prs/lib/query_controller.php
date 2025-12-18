@@ -135,8 +135,36 @@ final class PRS_Query_Controller
         ];
     }
 
+    /* ---------- [新增] 产品类别列表 ---------- */
+    public function get_categories(): array
+    {
+        $sql = "
+            SELECT DISTINCT category
+            FROM prs_products
+            WHERE category IS NOT NULL AND category != ''
+            ORDER BY category ASC
+        ";
+        $stmt = $this->pdo->query($sql);
+        $rows = $stmt->fetchAll(\PDO::FETCH_COLUMN) ?: [];
+        return $rows;
+    }
+
+    /* ---------- [新增] 按类别获取产品 ---------- */
+    public function get_products_by_category(string $category): array
+    {
+        $sql = "
+            SELECT id, name_es, base_name_es, name_zh, category
+            FROM prs_products
+            WHERE category = ?
+            ORDER BY name_es ASC
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$category]);
+        return $stmt->fetchAll() ?: [];
+    }
+
     /* ---------- [新增] 产品列表 ---------- */
-    public function list_products(int $page = 1, int $pageSize = 20, string $q = ''): array
+    public function list_products(int $page = 1, int $pageSize = 20, string $q = '', string $category = ''): array
     {
         $offset = ($page - 1) * $pageSize;
         $where = '1=1';
@@ -149,6 +177,12 @@ final class PRS_Query_Controller
             $params = [$qLike, $qLike];
         }
 
+        // 添加类别筛选
+        if ($category) {
+            $where .= ($where !== '1=1' ? ' AND ' : '') . 'p.category = ?';
+            $params[] = $category;
+        }
+
         // 统计总数（需要考虑搜索条件）
         $countSql = "SELECT COUNT(*) FROM prs_products p WHERE {$where}";
         $countStmt = $this->pdo->prepare($countSql);
@@ -157,8 +191,8 @@ final class PRS_Query_Controller
 
         // 查询分页数据
         $sql = "
-            SELECT 
-                p.id, p.name_es, p.base_name_es, p.name_zh, p.category, 
+            SELECT
+                p.id, p.name_es, p.base_name_es, p.name_zh, p.category,
                 MAX(o.date_local) AS last_observed_date,
                 p.created_at
             FROM prs_products p
@@ -168,7 +202,7 @@ final class PRS_Query_Controller
             ORDER BY p.id DESC
             LIMIT ? OFFSET ?
         ";
-        
+
         $stmt = $this->pdo->prepare($sql);
         $paramIndex = 1; // 用于绑定参数的索引计数器
 
@@ -179,15 +213,20 @@ final class PRS_Query_Controller
             $stmt->bindValue($paramIndex++, $qLike);
         }
 
-        // 2. 绑定 LIMIT 和 OFFSET 参数 (总是最后两个)
+        // 2. 绑定类别参数 (如果存在)
+        if ($category) {
+            $stmt->bindValue($paramIndex++, $category);
+        }
+
+        // 3. 绑定 LIMIT 和 OFFSET 参数 (总是最后两个)
         $stmt->bindValue($paramIndex++, $pageSize, \PDO::PARAM_INT);
         $stmt->bindValue($paramIndex++, $offset, \PDO::PARAM_INT);
 
         $stmt->execute();
-        
+
         return [
-            'total' => $totalCount, 
-            'page'  => $page, 
+            'total' => $totalCount,
+            'page'  => $page,
             'pageSize' => $pageSize,
             'items' => $stmt->fetchAll() ?: []
         ];
