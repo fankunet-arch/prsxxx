@@ -3,14 +3,18 @@
  * PRS Trends Action - 价格趋势分析页面
  * 文件路径: app/prs/actions/trends.php
  * 说明: 价格趋势分析和图表展示
+ *
+ * 支持URL参数预选：
+ *   - product_id: 产品ID
+ *   - store_id: 门店ID
+ *   - product_name: 产品名称（用于显示）
+ *   - store_name: 门店名称（用于显示）
  */
 
 // 防止直接访问
 if (!defined('PRS_ENTRY')) {
     die('Access denied');
 }
-
-
 
 // 加载 header 布局
 $header = PRS_VIEW_PATH . '/layouts/header.php';
@@ -28,19 +32,40 @@ $imgBase = (function(){
     $c = cfg();
     return $c['prs_images_base_url'] ?? '/prs/assets/img/products/';
 })();
+
+// 获取URL预选参数
+$preselect = [
+    'product_id' => isset($_GET['product_id']) ? (int)$_GET['product_id'] : null,
+    'store_id' => isset($_GET['store_id']) ? (int)$_GET['store_id'] : null,
+    'product_name' => isset($_GET['product_name']) ? trim($_GET['product_name']) : '',
+    'store_name' => isset($_GET['store_name']) ? trim($_GET['store_name']) : '',
+];
 ?>
 <div class="stack" style="gap:16px">
+  <!-- 最近查询历史 -->
+  <div id="recentQueries" class="card" style="border-radius:12px; display:none;">
+    <div class="body" style="padding:12px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="font-weight:500; font-size:14px;">最近查询</span>
+        <span class="muted" style="font-size:12px;">点击快速选择</span>
+        <div style="flex:1"></div>
+        <button class="btn secondary" id="btnClearHistory" style="padding:4px 8px; font-size:12px;">清除</button>
+      </div>
+      <div id="recentList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col">
-      <div class="kv"><label>产品类别</label>
+      <div class="kv"><label>产品类别 <span class="muted" style="font-size:12px;">(可选)</span></label>
         <select id="selCategory">
           <option value="">-- 全部类别 --</option>
         </select>
       </div>
     </div>
     <div class="col">
-      <div class="kv"><label>产品</label>
-        <input id="inpProd" list="dlProd" placeholder="点击选择或输入搜索"><datalist id="dlProd"></datalist>
+      <div class="kv"><label>产品 <span class="muted" style="font-size:12px; color:#ff9f0a;">*必选</span></label>
+        <input id="inpProd" list="dlProd" placeholder="输入名称搜索 (支持中文/西班牙文)"><datalist id="dlProd"></datalist>
         <div class="muted" id="prodInfo"></div>
       </div>
     </div>
@@ -48,28 +73,44 @@ $imgBase = (function(){
 
   <div class="row">
     <div class="col">
-      <div class="kv"><label>门店</label>
-        <input id="inpStore" list="dlStore" placeholder="点击选择或输入搜索"><datalist id="dlStore"></datalist>
+      <div class="kv"><label>门店 <span class="muted" style="font-size:12px; color:#ff9f0a;">*必选</span></label>
+        <input id="inpStore" list="dlStore" placeholder="输入门店名称搜索"><datalist id="dlStore"></datalist>
       </div>
     </div>
-    <div class="col"></div>
+    <div class="col">
+      <!-- 快速选择最近门店 -->
+      <div class="kv"><label>快速选门店</label>
+        <select id="quickStore" style="max-width:200px;">
+          <option value="">-- 选择门店 --</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <div class="row">
     <div class="col">
-      <div class="kv"><label>时间</label>
+      <div class="kv"><label>时间范围</label>
         <input id="from" type="date" title="起始日期"> 至 <input id="to" type="date" style="max-width:200px" title="截止日期">
+        <select id="quickRange" style="max-width:120px; margin-left:8px;" title="快速选择时间范围">
+          <option value="">快速选择</option>
+          <option value="7">近7天</option>
+          <option value="30">近30天</option>
+          <option value="90">近3个月</option>
+          <option value="180">近6个月</option>
+          <option value="365">近1年</option>
+          <option value="all">全部</option>
+        </select>
       </div>
     </div>
     <div class="col">
-      <div class="kv"><label>聚合</label>
+      <div class="kv"><label>聚合方式</label>
         <select id="agg">
           <option value="day">按日</option>
           <option value="week">按周</option>
           <option value="month">按月</option>
         </select>
         <div style="flex:1"></div>
-        <button class="btn" id="btnQuery" style="max-width:160px">查询</button>
+        <button class="btn" id="btnQuery" style="max-width:160px">查询趋势</button>
       </div>
     </div>
   </div>
@@ -94,9 +135,118 @@ $imgBase = (function(){
   const $ = s => document.querySelector(s);
   const apiBase = <?= json_encode($apiBase) ?>;
 
+  // URL预选参数
+  const preselect = <?= json_encode($preselect) ?>;
+
   let selectedProd = null, selectedStore = null;
   let allProducts = []; // 缓存所有产品
   let allStores = []; // 缓存所有门店
+
+  // --- 最近查询历史管理 ---
+  const HISTORY_KEY = 'prs_trends_history';
+  const MAX_HISTORY = 8;
+
+  function getHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    } catch { return []; }
+  }
+
+  function saveToHistory(prod, store) {
+    if (!prod || !store) return;
+    let history = getHistory();
+    // 去重：移除相同组合
+    history = history.filter(h => !(h.product_id === prod.id && h.store_id === store.id));
+    // 添加到开头
+    history.unshift({
+      product_id: prod.id,
+      product_name: prod.name,
+      store_id: store.id,
+      store_name: store.name,
+      timestamp: Date.now()
+    });
+    // 限制数量
+    history = history.slice(0, MAX_HISTORY);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const history = getHistory();
+    const container = $('#recentQueries');
+    const list = $('#recentList');
+
+    if (history.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = '';
+
+    history.forEach(h => {
+      const btn = document.createElement('button');
+      btn.className = 'btn secondary';
+      btn.style.cssText = 'padding:6px 12px; font-size:13px; white-space:nowrap;';
+      btn.innerHTML = `<span style="color:#3aa6ff;">${escapeHtml(h.product_name)}</span> @ <span style="color:#30d158;">${escapeHtml(h.store_name)}</span>`;
+      btn.title = `点击查询: ${h.product_name} 在 ${h.store_name} 的价格趋势`;
+      btn.onclick = () => {
+        selectedProd = { id: h.product_id, name: h.product_name };
+        selectedStore = { id: h.store_id, name: h.store_name };
+        $('#inpProd').value = h.product_name;
+        $('#inpStore').value = h.store_name;
+        $('#prodInfo').textContent = `#${h.product_id}`;
+        // 自动触发查询
+        $('#btnQuery').click();
+      };
+      list.appendChild(btn);
+    });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // 清除历史按钮
+  $('#btnClearHistory').addEventListener('click', () => {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+    toast('已清除查询历史', 'ok');
+  });
+
+  // --- 快速选择时间范围 ---
+  $('#quickRange').addEventListener('change', e => {
+    const val = e.target.value;
+    if (!val) return;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    $('#to').value = todayStr;
+
+    if (val === 'all') {
+      $('#from').value = '';
+    } else {
+      const days = parseInt(val, 10);
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - days);
+      $('#from').value = fromDate.toISOString().split('T')[0];
+    }
+    e.target.value = ''; // 重置选择
+  });
+
+  // --- 快速选择门店下拉 ---
+  $('#quickStore').addEventListener('change', e => {
+    const val = e.target.value;
+    if (!val) return;
+    const store = allStores.find(s => s.id == val);
+    if (store) {
+      selectedStore = { id: store.id, name: store.store_name };
+      $('#inpStore').value = store.store_name;
+    }
+    e.target.value = ''; // 重置
+  });
 
   // --- 初始化：加载类别和门店 ---
   (async function init() {
@@ -132,8 +282,45 @@ $imgBase = (function(){
       const data = await res.json().catch(()=>({}));
       if (data.ok && data.data && data.data.rows) {
         allStores = data.data.rows;
+        // 填充快速选择门店下拉
+        const quickSel = $('#quickStore');
+        allStores.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.store_name;
+          quickSel.appendChild(opt);
+        });
       }
     } catch (e) { console.error('加载门店失败:', e); }
+
+    // 加载所有产品用于全局搜索
+    try {
+      const res = await fetch(`${apiBase}list_products&page=1&size=9999`);
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.items) {
+        allProducts = data.items;
+        updateProductDatalist(allProducts);
+      }
+    } catch (e) { console.error('加载产品失败:', e); }
+
+    // 渲染历史记录
+    renderHistory();
+
+    // 处理URL预选参数
+    if (preselect.product_id && preselect.product_name) {
+      selectedProd = { id: preselect.product_id, name: preselect.product_name };
+      $('#inpProd').value = preselect.product_name;
+      $('#prodInfo').textContent = `#${preselect.product_id}`;
+    }
+    if (preselect.store_id && preselect.store_name) {
+      selectedStore = { id: preselect.store_id, name: preselect.store_name };
+      $('#inpStore').value = preselect.store_name;
+    }
+
+    // 如果都预选了，自动触发查询
+    if (selectedProd && selectedStore) {
+      setTimeout(() => $('#btnQuery').click(), 300);
+    }
   })();
 
   // --- 时间选择验证 ---
@@ -178,31 +365,22 @@ $imgBase = (function(){
     }
   });
 
-  // --- 类别选择改变时，加载该类别的产品 ---
+  // --- 类别选择改变时，过滤显示的产品（可选功能） ---
   $('#selCategory').addEventListener('change', async e => {
     const category = e.target.value;
-    const list = $('#dlProd');
-    list.innerHTML = '';
-    allProducts = [];
     selectedProd = null;
     $('#prodInfo').textContent = '';
     $('#inpProd').value = '';
 
     if (!category) {
-      $('#inpProd').placeholder = '请先选择类别';
+      // 显示所有产品
+      updateProductDatalist(allProducts);
       return;
     }
 
-    $('#inpProd').placeholder = '点击选择或输入搜索';
-
-    try {
-      const res = await fetch(`${apiBase}products_by_category&category=${encodeURIComponent(category)}`);
-      const data = await res.json().catch(()=>({}));
-      if (data.ok && data.data && data.data.items) {
-        allProducts = data.data.items;
-        updateProductDatalist(allProducts);
-      }
-    } catch (e) { console.error('加载产品失败:', e); }
+    // 根据类别过滤
+    const filtered = allProducts.filter(p => p.category === category);
+    updateProductDatalist(filtered);
   });
 
   // 更新产品 datalist
@@ -222,8 +400,14 @@ $imgBase = (function(){
 
   // --- 产品输入框：点击时显示所有，输入时过滤 ---
   $('#inpProd').addEventListener('focus', e => {
+    const category = $('#selCategory').value;
     if (allProducts.length > 0) {
-      updateProductDatalist(allProducts);
+      if (category) {
+        const filtered = allProducts.filter(p => p.category === category);
+        updateProductDatalist(filtered);
+      } else {
+        updateProductDatalist(allProducts);
+      }
     }
   });
 
@@ -233,15 +417,25 @@ $imgBase = (function(){
     $('#prodInfo').textContent = '';
 
     if (!q || allProducts.length === 0) {
-      if (allProducts.length > 0) updateProductDatalist(allProducts);
+      const category = $('#selCategory').value;
+      if (category) {
+        const filtered = allProducts.filter(p => p.category === category);
+        updateProductDatalist(filtered);
+      } else {
+        updateProductDatalist(allProducts);
+      }
       return;
     }
 
-    // 过滤产品
-    const filtered = allProducts.filter(p =>
-      p.name_es.toLowerCase().includes(q) ||
+    // 过滤产品（同时考虑类别筛选）
+    const category = $('#selCategory').value;
+    let filtered = allProducts.filter(p =>
+      (p.name_es && p.name_es.toLowerCase().includes(q)) ||
       (p.name_zh && p.name_zh.toLowerCase().includes(q))
     );
+    if (category) {
+      filtered = filtered.filter(p => p.category === category);
+    }
     updateProductDatalist(filtered);
   });
 
@@ -354,6 +548,10 @@ $imgBase = (function(){
     if (!ts.ok) { toast('查询失败：' + (ts.message || 'timeseries'), 'err'); return; }
     drawChart(ts.rows || [], sn.rows || [], so.rows || [], agg);
     fillTable(ts.rows || [], agg);
+
+    // 保存到查询历史
+    saveToHistory(selectedProd, selectedStore);
+
     toast('查询完成', 'ok');
   });
 
