@@ -46,13 +46,23 @@ if (!function_exists('render_header')) {
     .row{display:flex;gap:18px;align-items:stretch;flex-wrap:wrap}
     .col{flex:1 1 360px;min-width:0}
     textarea, input, select, button{
-      width:100%; border:1px solid var(--border); background:transparent; color:var(--text);
+      width:100%; border:1px solid var(--border); background:var(--card); color:var(--text);
       border-radius:12px; padding:12px 14px; outline:none; font-size:14px;
+    }
+    /* 下拉框选项样式 - 确保在深色模式下可见 */
+    select option{
+      background:var(--card);
+      color:var(--text);
+      padding:8px;
+    }
+    select:focus{
+      border-color:var(--primary);
     }
     textarea{min-height:200px;resize:vertical}
     button{cursor:pointer; font-weight:700; min-height:44px; touch-action:manipulation}
     .btn{background:linear-gradient(180deg,#3aa6ff,#1f86f9); border:none; color:#fff}
-    .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .btn.secondary{background:var(--card);border:1px solid var(--border);color:var(--text)}
+    .btn.secondary:hover{background:var(--accent);border-color:var(--primary)}
     .btn.ok{background:linear-gradient(180deg,#4cd964,#2bbb49)}
     .btn.err{background:linear-gradient(180deg,#ff5b54,#e23b33)}
     .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}

@@ -47,6 +47,7 @@ $apiBase = '/prs/index.php?action=query_list_products';
           <th>类目</th>
           <th>最近观测日</th>
           <th>创建日期</th>
+          <th style="width:100px; text-align:center;">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -69,6 +70,14 @@ $apiBase = '/prs/index.php?action=query_list_products';
   let currentPage = 1;
   let currentCategory = '';
   let currentSearch = '';
+
+  // HTML转义函数
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
   // 初始化：加载类别
   (async function init() {
@@ -113,7 +122,7 @@ $apiBase = '/prs/index.php?action=query_list_products';
     tb.innerHTML = '';
 
     if (data.items.length === 0) {
-      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;">没有找到产品数据</td></tr>';
+      tb.innerHTML = '<tr><td colspan="8" style="text-align:center;">没有找到产品数据</td></tr>';
       $('#summary').textContent = '总计 0 条记录';
       $('#pagination').style.display = 'none';
       return;
@@ -122,14 +131,24 @@ $apiBase = '/prs/index.php?action=query_list_products';
     data.items.forEach(p => {
       const tr = document.createElement('tr');
       const baseName = p.base_name_es || '—';
+      const productName = p.name_es || '';
+      const encodedName = encodeURIComponent(productName);
       tr.innerHTML = `
         <td>${p.id}</td>
-        <td>${p.name_es || '—'}</td>
-        <td>${baseName}</td>
-        <td>${p.name_zh || '—'}</td>
+        <td>${escapeHtml(p.name_es) || '—'}</td>
+        <td>${escapeHtml(baseName)}</td>
+        <td>${escapeHtml(p.name_zh) || '—'}</td>
         <td>${p.category || '—'}</td>
         <td>${p.last_observed_date || '未观测'}</td>
         <td>${p.created_at ? p.created_at.substring(0, 10) : '—'}</td>
+        <td style="text-align:center;">
+          <a href="/prs/index.php?action=trends&product_id=${p.id}&product_name=${encodedName}"
+             class="btn secondary"
+             style="padding:4px 10px; font-size:12px; text-decoration:none;"
+             title="查看 ${productName} 的价格趋势">
+            趋势
+          </a>
+        </td>
       `;
       tb.appendChild(tr);
     });
