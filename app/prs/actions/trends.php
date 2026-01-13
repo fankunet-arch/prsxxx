@@ -78,41 +78,38 @@ $preselect = [
       </div>
     </div>
     <div class="col">
-      <!-- 快速选择最近门店 -->
+      <!-- 快速选择门店 -->
       <div class="kv"><label>快速选门店</label>
-        <select id="quickStore" style="max-width:200px;">
-          <option value="">-- 选择门店 --</option>
+        <select id="quickStore">
+          <option value="">-- 从列表选择 --</option>
         </select>
       </div>
     </div>
   </div>
 
-  <div class="row">
-    <div class="col">
-      <div class="kv"><label>时间范围</label>
-        <input id="from" type="date" title="起始日期"> 至 <input id="to" type="date" style="max-width:200px" title="截止日期">
-        <select id="quickRange" style="max-width:120px; margin-left:8px;" title="快速选择时间范围">
-          <option value="">快速选择</option>
-          <option value="7">近7天</option>
-          <option value="30">近30天</option>
-          <option value="90">近3个月</option>
-          <option value="180">近6个月</option>
-          <option value="365">近1年</option>
-          <option value="all">全部</option>
-        </select>
-      </div>
-    </div>
-    <div class="col">
-      <div class="kv"><label>聚合方式</label>
-        <select id="agg">
-          <option value="day">按日</option>
-          <option value="week">按周</option>
-          <option value="month">按月</option>
-        </select>
-        <div style="flex:1"></div>
-        <button class="btn" id="btnQuery" style="max-width:160px">查询趋势</button>
-      </div>
-    </div>
+  <!-- 时间范围 - 水平布局 -->
+  <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+    <label class="muted" style="font-size:13px; min-width:70px;">时间范围</label>
+    <input id="from" type="date" title="起始日期" style="width:150px; flex:none;">
+    <span class="muted">至</span>
+    <input id="to" type="date" title="截止日期" style="width:150px; flex:none;">
+    <select id="quickRange" style="width:110px; flex:none;" title="快速选择">
+      <option value="">快速选择</option>
+      <option value="7">近7天</option>
+      <option value="30">近30天</option>
+      <option value="90">近3个月</option>
+      <option value="180">近6个月</option>
+      <option value="365">近1年</option>
+      <option value="all">全部</option>
+    </select>
+    <div style="flex:1; min-width:20px;"></div>
+    <label class="muted" style="font-size:13px;">聚合</label>
+    <select id="agg" style="width:90px; flex:none;">
+      <option value="day">按日</option>
+      <option value="week">按周</option>
+      <option value="month">按月</option>
+    </select>
+    <button class="btn" id="btnQuery" style="width:120px; flex:none;">查询趋势</button>
   </div>
 
   <div class="card" style="border-radius:16px">
@@ -280,8 +277,10 @@ $preselect = [
     try {
       const res = await fetch(`${apiBase}list_stores`);
       const data = await res.json().catch(()=>({}));
-      if (data.ok && data.data && data.data.rows) {
-        allStores = data.data.rows;
+      // 兼容两种响应格式: data.rows 或 data.data.rows
+      const storeRows = data.rows || (data.data && data.data.rows) || [];
+      if (data.ok && storeRows.length > 0) {
+        allStores = storeRows;
         // 填充快速选择门店下拉
         const quickSel = $('#quickStore');
         allStores.forEach(s => {
@@ -290,6 +289,7 @@ $preselect = [
           opt.textContent = s.store_name;
           quickSel.appendChild(opt);
         });
+        console.log('门店加载成功:', allStores.length, '家');
       }
     } catch (e) { console.error('加载门店失败:', e); }
 
