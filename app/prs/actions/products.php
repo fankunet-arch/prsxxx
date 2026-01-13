@@ -27,6 +27,9 @@ $apiBase = '/prs/index.php?action=query_list_products';
 ?>
 <div class="stack" style="gap:16px">
   <div class="toolbar">
+    <select id="selCategory" style="max-width:200px; flex:none;">
+      <option value="">-- 全部类别 --</option>
+    </select>
     <input id="inpSearch" type="text" placeholder="输入ES名/中文名检索" style="max-width:320px; flex:none;">
     <button class="btn" id="btnSearch" style="max-width:120px; flex:none;">搜索</button>
     <div style="flex:1"></div>
@@ -64,9 +67,30 @@ $apiBase = '/prs/index.php?action=query_list_products';
   const apiBase = <?= json_encode($apiBase) ?>;
   const PAGE_SIZE = 20;
   let currentPage = 1;
+  let currentCategory = '';
+  let currentSearch = '';
 
-  async function fetchData(page, q = '') {
-    const url = `${apiBase}&page=${page}&size=${PAGE_SIZE}&q=${encodeURIComponent(q)}`;
+  // 初始化：加载类别
+  (async function init() {
+    try {
+      const res = await fetch('/prs/index.php?action=query_categories');
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.data && data.data.categories) {
+        const sel = $('#selCategory');
+        data.data.categories.forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat;
+          opt.textContent = cat;
+          sel.appendChild(opt);
+        });
+      }
+    } catch (e) { console.error('加载类别失败:', e); }
+  })();
+
+  async function fetchData(page, q = '', category = '') {
+    let url = `${apiBase}&page=${page}&size=${PAGE_SIZE}`;
+    if (q) url += `&q=${encodeURIComponent(q)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
 
     try {
       const res = await fetch(url);
@@ -123,8 +147,9 @@ $apiBase = '/prs/index.php?action=query_list_products';
   }
 
   async function queryProducts() {
-    const q = $('#inpSearch').value.trim();
-    const data = await fetchData(currentPage, q);
+    currentSearch = $('#inpSearch').value.trim();
+    currentCategory = $('#selCategory').value;
+    const data = await fetchData(currentPage, currentSearch, currentCategory);
     fillTable(data);
     toast('查询完成', 'ok', 1200);
   }
@@ -136,10 +161,16 @@ $apiBase = '/prs/index.php?action=query_list_products';
   })();
 
   // 绑定事件
+  $('#selCategory').addEventListener('change', () => {
+    currentPage = 1;
+    queryProducts();
+  });
+
   $('#btnSearch').addEventListener('click', () => {
     currentPage = 1;
     queryProducts();
   });
+
   $('#inpSearch').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       currentPage = 1;
