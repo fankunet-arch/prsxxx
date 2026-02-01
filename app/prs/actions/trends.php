@@ -82,6 +82,7 @@ $preselect = [
       <div class="kv"><label>快速选门店</label>
         <select id="quickStore">
           <option value="">-- 从列表选择 --</option>
+          <option value="0">-- 所有门店 --</option>
         </select>
       </div>
     </div>
@@ -194,6 +195,8 @@ $preselect = [
         $('#inpStore').value = h.store_name;
         $('#prodInfo').textContent = `#${h.product_id}`;
         // 自动触发查询
+        loadStores(h.product_id); // Ensure stores filtered
+        loadProducts(h.store_id); // Ensure products filtered
         $('#btnQuery').click();
       };
       list.appendChild(btn);
@@ -236,14 +239,60 @@ $preselect = [
   // --- 快速选择门店下拉 ---
   $('#quickStore').addEventListener('change', e => {
     const val = e.target.value;
-    if (!val) return;
-    const store = allStores.find(s => s.id == val);
-    if (store) {
-      selectedStore = { id: store.id, name: store.store_name };
-      $('#inpStore').value = store.store_name;
+    if (val === '') return;
+
+    if (val === '0') {
+        selectedStore = { id: 0, name: '所有门店' };
+        $('#inpStore').value = '所有门店';
+        loadProducts(0);
+    } else {
+        const store = allStores.find(s => s.id == val);
+        if (store) {
+          selectedStore = { id: store.id, name: store.store_name };
+          $('#inpStore').value = store.store_name;
+          loadProducts(store.id);
+        }
     }
     e.target.value = ''; // 重置
   });
+
+  // --- 数据加载 ---
+  async function loadProducts(storeId = 0) {
+    try {
+      const qs = storeId > 0 ? `&store_id=${storeId}` : '';
+      const res = await fetch(`${apiBase}list_products&page=1&size=9999${qs}`);
+      const data = await res.json().catch(()=>({}));
+      if (data.ok && data.items) {
+        allProducts = data.items;
+        updateProductDatalist(allProducts);
+      }
+    } catch (e) { console.error('加载产品失败:', e); }
+  }
+
+  async function loadStores(productId = 0) {
+    try {
+      const qs = productId > 0 ? `&product_id=${productId}` : '';
+      const res = await fetch(`${apiBase}list_stores${qs}`);
+      const data = await res.json().catch(()=>({}));
+      const storeRows = data.rows || (data.data && data.data.rows) || [];
+      if (data.ok) {
+        allStores = storeRows;
+        updateStoreDatalist(allStores);
+        updateQuickStoreSelect(allStores);
+      }
+    } catch (e) { console.error('加载门店失败:', e); }
+  }
+
+  function updateQuickStoreSelect(stores) {
+    const sel = $('#quickStore');
+    sel.innerHTML = '<option value="">-- 从列表选择 --</option><option value="0">-- 所有门店 --</option>';
+    stores.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.store_name;
+      sel.appendChild(opt);
+    });
+  }
 
   // --- 初始化：加载类别和门店 ---
   (async function init() {
@@ -273,35 +322,8 @@ $preselect = [
       }
     } catch (e) { console.error('加载类别失败:', e); }
 
-    // 加载所有门店
-    try {
-      const res = await fetch(`${apiBase}list_stores`);
-      const data = await res.json().catch(()=>({}));
-      // 兼容两种响应格式: data.rows 或 data.data.rows
-      const storeRows = data.rows || (data.data && data.data.rows) || [];
-      if (data.ok && storeRows.length > 0) {
-        allStores = storeRows;
-        // 填充快速选择门店下拉
-        const quickSel = $('#quickStore');
-        allStores.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.textContent = s.store_name;
-          quickSel.appendChild(opt);
-        });
-        console.log('门店加载成功:', allStores.length, '家');
-      }
-    } catch (e) { console.error('加载门店失败:', e); }
-
-    // 加载所有产品用于全局搜索
-    try {
-      const res = await fetch(`${apiBase}list_products&page=1&size=9999`);
-      const data = await res.json().catch(()=>({}));
-      if (data.ok && data.items) {
-        allProducts = data.items;
-        updateProductDatalist(allProducts);
-      }
-    } catch (e) { console.error('加载产品失败:', e); }
+    // 加载初始数据
+    await Promise.all([loadStores(0), loadProducts(0)]);
 
     // 渲染历史记录
     renderHistory();
@@ -311,10 +333,19 @@ $preselect = [
       selectedProd = { id: preselect.product_id, name: preselect.product_name };
       $('#inpProd').value = preselect.product_name;
       $('#prodInfo').textContent = `#${preselect.product_id}`;
+      // Filter stores based on product
+      loadStores(preselect.product_id);
     }
-    if (preselect.store_id && preselect.store_name) {
-      selectedStore = { id: preselect.store_id, name: preselect.store_name };
-      $('#inpStore').value = preselect.store_name;
+    if (preselect.store_id !== null) {
+      if (preselect.store_id === 0) {
+          selectedStore = { id: 0, name: '所有门店' };
+          $('#inpStore').value = '所有门店';
+      } else if (preselect.store_name) {
+          selectedStore = { id: preselect.store_id, name: preselect.store_name };
+          $('#inpStore').value = preselect.store_name;
+      }
+      // Filter products based on store
+      loadProducts(preselect.store_id);
     }
 
     // 如果都预选了，自动触发查询
@@ -328,21 +359,8 @@ $preselect = [
     const fromDate = e.target.value;
     const toDate = $('#to').value;
     const today = new Date().toISOString().split('T')[0];
-
-    // 起始日期不能晚于今天
-    if (fromDate > today) {
-      toast('起始日期不能晚于今天', 'warn');
-      e.target.value = today;
-      return;
-    }
-
-    // 如果截止日期已设置，起始日期不能晚于截止日期
-    if (toDate && fromDate > toDate) {
-      toast('起始日期不能晚于截止日期', 'warn');
-      e.target.value = toDate;
-    }
-
-    // 更新截止日期的最小值
+    if (fromDate > today) { toast('起始日期不能晚于今天', 'warn'); e.target.value = today; return; }
+    if (toDate && fromDate > toDate) { toast('起始日期不能晚于截止日期', 'warn'); e.target.value = toDate; }
     $('#to').min = fromDate;
   });
 
@@ -350,19 +368,8 @@ $preselect = [
     const fromDate = $('#from').value;
     const toDate = e.target.value;
     const today = new Date().toISOString().split('T')[0];
-
-    // 截止日期不能晚于今天
-    if (toDate > today) {
-      toast('截止日期不能晚于今天', 'warn');
-      e.target.value = today;
-      return;
-    }
-
-    // 如果起始日期已设置，截止日期不能早于起始日期
-    if (fromDate && toDate < fromDate) {
-      toast('截止日期不能早于起始日期', 'warn');
-      e.target.value = fromDate;
-    }
+    if (toDate > today) { toast('截止日期不能晚于今天', 'warn'); e.target.value = today; return; }
+    if (fromDate && toDate < fromDate) { toast('截止日期不能早于起始日期', 'warn'); e.target.value = fromDate; }
   });
 
   // --- 类别选择改变时，过滤显示的产品（可选功能） ---
@@ -373,12 +380,9 @@ $preselect = [
     $('#inpProd').value = '';
 
     if (!category) {
-      // 显示所有产品
       updateProductDatalist(allProducts);
       return;
     }
-
-    // 根据类别过滤
     const filtered = allProducts.filter(p => p.category === category);
     updateProductDatalist(filtered);
   });
@@ -400,15 +404,9 @@ $preselect = [
 
   // --- 产品输入框：点击时显示所有，输入时过滤 ---
   $('#inpProd').addEventListener('focus', e => {
-    const category = $('#selCategory').value;
-    if (allProducts.length > 0) {
-      if (category) {
-        const filtered = allProducts.filter(p => p.category === category);
-        updateProductDatalist(filtered);
-      } else {
-        updateProductDatalist(allProducts);
-      }
-    }
+    // Trigger input event logic manually if needed? No, just rely on datalist.
+    // But we might want to refresh datalist if category changed?
+    // Handled by updateProductDatalist call in category change.
   });
 
   $('#inpProd').addEventListener('input', e => {
@@ -416,23 +414,20 @@ $preselect = [
     selectedProd = null;
     $('#prodInfo').textContent = '';
 
-    if (!q || allProducts.length === 0) {
-      const category = $('#selCategory').value;
-      if (category) {
-        const filtered = allProducts.filter(p => p.category === category);
-        updateProductDatalist(filtered);
-      } else {
-        updateProductDatalist(allProducts);
-      }
-      return;
+    if (q === '') {
+        // Cleared -> Reload all stores
+        loadStores(0);
     }
 
-    // 过滤产品（同时考虑类别筛选）
+    // Filter local cache
     const category = $('#selCategory').value;
-    let filtered = allProducts.filter(p =>
-      (p.name_es && p.name_es.toLowerCase().includes(q)) ||
-      (p.name_zh && p.name_zh.toLowerCase().includes(q))
-    );
+    let filtered = allProducts;
+    if (q) {
+        filtered = filtered.filter(p =>
+            (p.name_es && p.name_es.toLowerCase().includes(q)) ||
+            (p.name_zh && p.name_zh.toLowerCase().includes(q))
+        );
+    }
     if (category) {
       filtered = filtered.filter(p => p.category === category);
     }
@@ -445,9 +440,12 @@ $preselect = [
     if (hit) {
       selectedProd = {id: parseInt(hit.dataset.pid,10), name: v};
       $('#prodInfo').textContent = `${hit.label} · ${hit.dataset.category}`;
+      // Product selected -> Filter stores
+      loadStores(selectedProd.id);
     } else {
       selectedProd = null;
       $('#prodInfo').textContent = '';
+      loadStores(0);
     }
   });
 
@@ -455,6 +453,14 @@ $preselect = [
   function updateStoreDatalist(stores) {
     const list = $('#dlStore');
     list.innerHTML = '';
+
+    // Allow "All Stores" via manual input suggestion
+    const optAll = document.createElement('option');
+    optAll.value = '所有门店';
+    optAll.label = '所有门店';
+    optAll.dataset.sid = 0;
+    list.appendChild(optAll);
+
     stores.forEach(it => {
       const opt = document.createElement('option');
       opt.value = it.store_name;
@@ -464,23 +470,17 @@ $preselect = [
     });
   }
 
-  // --- 门店输入框：点击时显示所有，输入时过滤 ---
-  $('#inpStore').addEventListener('focus', e => {
-    if (allStores.length > 0) {
-      updateStoreDatalist(allStores);
-    }
-  });
-
+  // --- 门店输入框 ---
   $('#inpStore').addEventListener('input', e => {
     const q = e.target.value.trim().toLowerCase();
     selectedStore = null;
 
-    if (!q || allStores.length === 0) {
-      if (allStores.length > 0) updateStoreDatalist(allStores);
-      return;
+    if (q === '') {
+        // Cleared -> Reload all products
+        loadProducts(0);
     }
 
-    // 过滤门店
+    if (!q) { updateStoreDatalist(allStores); return; }
     const filtered = allStores.filter(s =>
       s.store_name.toLowerCase().includes(q)
     );
@@ -489,8 +489,22 @@ $preselect = [
 
   $('#inpStore').addEventListener('change', e => {
     const v = e.target.value.trim();
+
+    if (v === '所有门店') {
+        selectedStore = {id: 0, name: '所有门店'};
+        loadProducts(0);
+        return;
+    }
+
     const hit = Array.from($('#dlStore').options).find(o => o.value === v);
-    selectedStore = hit ? {id: parseInt(hit.dataset.sid,10), name: v} : null;
+    if (hit) {
+        const sid = parseInt(hit.dataset.sid, 10);
+        selectedStore = {id: sid, name: v};
+        loadProducts(sid);
+    } else {
+        selectedStore = null;
+        loadProducts(0);
+    }
   });
 
   // --- 统一：点击查询 → 先请求后端解析名称 → 拿到ID再查 ---
@@ -498,11 +512,17 @@ $preselect = [
     const prodText  = $('#inpProd').value.trim();
     const storeText = $('#inpStore').value.trim();
 
+    if (storeText === '所有门店') {
+        selectedStore = {id: 0, name: '所有门店'};
+    }
+
     // 若前端未选中，则调用后端解析
     if (!selectedProd || !selectedStore) {
       const body = new URLSearchParams();
       body.set('product_name', prodText);
-      body.set('store_name', storeText);
+      if (storeText !== '所有门店') {
+          body.set('store_name', storeText);
+      }
 
       const res = await fetch(`${apiBase}resolve`, {
         method: 'POST',
@@ -512,14 +532,21 @@ $preselect = [
       const data = await res.json().catch(()=>({}));
 
       if (!selectedProd) {
-        if (data.product) { selectedProd = {id: data.product.id, name: data.product.name_es}; $('#prodInfo').textContent = `#${data.product.id} · ${data.product.category}${data.product.name_zh ? ' · '+data.product.name_zh : ''}`; }
+        if (data.product) {
+            selectedProd = {id: data.product.id, name: data.product.name_es};
+            $('#prodInfo').textContent = `#${data.product.id} · ${data.product.category}${data.product.name_zh ? ' · '+data.product.name_zh : ''}`;
+            loadStores(selectedProd.id);
+        }
         else if ((data.product_candidates||[]).length) {
           toast('产品不唯一，请从下拉选择', 'warn');
           return;
         }
       }
-      if (!selectedStore) {
-        if (data.store) { selectedStore = {id: data.store.id, name: data.store.store_name}; }
+      if (!selectedStore && storeText !== '所有门店') {
+        if (data.store) {
+            selectedStore = {id: data.store.id, name: data.store.store_name};
+            loadProducts(selectedStore.id);
+        }
         else if ((data.store_candidates||[]).length) {
           toast('门店不唯一，请从下拉选择', 'warn');
           return;

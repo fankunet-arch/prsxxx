@@ -164,7 +164,7 @@ final class PRS_Query_Controller
     }
 
     /* ---------- [新增] 产品列表 ---------- */
-    public function list_products(int $page = 1, int $pageSize = 20, string $q = '', string $category = ''): array
+    public function list_products(int $page = 1, int $pageSize = 20, string $q = '', string $category = '', int $storeId = 0): array
     {
         $offset = ($page - 1) * $pageSize;
         $where = '1=1';
@@ -181,6 +181,12 @@ final class PRS_Query_Controller
         if ($category) {
             $where .= ($where !== '1=1' ? ' AND ' : '') . 'p.category = ?';
             $params[] = $category;
+        }
+
+        // 添加门店筛选
+        if ($storeId > 0) {
+            $where .= ($where !== '1=1' ? ' AND ' : '') . ' EXISTS (SELECT 1 FROM prs_price_observations obs WHERE obs.product_id = p.id AND obs.store_id = ?)';
+            $params[] = $storeId;
         }
 
         // 统计总数（需要考虑搜索条件）
@@ -218,7 +224,12 @@ final class PRS_Query_Controller
             $stmt->bindValue($paramIndex++, $category);
         }
 
-        // 3. 绑定 LIMIT 和 OFFSET 参数 (总是最后两个)
+        // 3. 绑定门店参数 (如果存在)
+        if ($storeId > 0) {
+            $stmt->bindValue($paramIndex++, $storeId, \PDO::PARAM_INT);
+        }
+
+        // 4. 绑定 LIMIT 和 OFFSET 参数 (总是最后两个)
         $stmt->bindValue($paramIndex++, $pageSize, \PDO::PARAM_INT);
         $stmt->bindValue($paramIndex++, $offset, \PDO::PARAM_INT);
 
@@ -233,19 +244,36 @@ final class PRS_Query_Controller
     }
 
     /* ---------- [新增] 门店列表 ---------- */
-    public function list_stores(): array
+    public function list_stores(int $productId = 0): array
     {
-        $sql = "
-            SELECT 
-                s.id, s.store_name, s.created_at, 
-                COUNT(DISTINCT o.date_local) AS days_observed,
-                COUNT(o.id) AS total_observations
-            FROM prs_stores s
-            LEFT JOIN prs_price_observations o ON s.id = o.store_id
-            GROUP BY s.id
-            ORDER BY s.id DESC
-        ";
-        $stmt = $this->pdo->query($sql);
+        if ($productId > 0) {
+            // 如果指定了产品，只返回有该产品观测数据的门店
+            $sql = "
+                SELECT
+                    s.id, s.store_name, s.created_at,
+                    COUNT(DISTINCT o.date_local) AS days_observed,
+                    COUNT(o.id) AS total_observations
+                FROM prs_stores s
+                JOIN prs_price_observations o ON s.id = o.store_id
+                WHERE o.product_id = ?
+                GROUP BY s.id
+                ORDER BY s.id DESC
+            ";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$productId]);
+        } else {
+            $sql = "
+                SELECT
+                    s.id, s.store_name, s.created_at,
+                    COUNT(DISTINCT o.date_local) AS days_observed,
+                    COUNT(o.id) AS total_observations
+                FROM prs_stores s
+                LEFT JOIN prs_price_observations o ON s.id = o.store_id
+                GROUP BY s.id
+                ORDER BY s.id DESC
+            ";
+            $stmt = $this->pdo->query($sql);
+        }
         return $stmt->fetchAll() ?: [];
     }
 
@@ -256,7 +284,12 @@ final class PRS_Query_Controller
     {
         if (!in_array($agg, ['day','week','month'], true)) { $agg = 'day'; }
 
-        $where = "product_id = :pid AND store_id = :sid";
+        $where = "product_id = :pid";
+        // 如果 storeId > 0，则添加 store_id 过滤
+        if ($storeId > 0) {
+            $where .= " AND store_id = :sid";
+        }
+
         if ($from) { $where .= " AND date_local >= :fromd"; }
         if ($to)   { $where .= " AND date_local <= :tod"; }
 
@@ -299,7 +332,9 @@ final class PRS_Query_Controller
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindValue(':pid', $productId, \PDO::PARAM_INT);
-        $stmt->bindValue(':sid', $storeId, \PDO::PARAM_INT);
+        if ($storeId > 0) {
+            $stmt->bindValue(':sid', $storeId, \PDO::PARAM_INT);
+        }
         if ($from) { $stmt->bindValue(':fromd', $from); }
         if ($to)   { $stmt->bindValue(':tod',   $to); }
         $stmt->execute();
@@ -312,14 +347,25 @@ final class PRS_Query_Controller
 
     public function season_monthly(int $productId, int $storeId, ?string $fromYm = null, ?string $toYm = null): array
     {
-        $sql = "SELECT ym, days_with_obs, is_in_market_month
-                FROM prs_season_monthly_v2
-                WHERE product_id = ? AND store_id = ?";
-        $params = [$productId, $storeId];
+        // 如果跨门店（storeId <= 0），进行聚合
+        if ($storeId <= 0) {
+            $sql = "SELECT ym, MAX(is_in_market_month) as is_in_market_month
+                    FROM prs_season_monthly_v2
+                    WHERE product_id = ?";
+            $params = [$productId];
+            if ($fromYm) { $sql .= " AND ym >= ?"; $params[] = $fromYm; }
+            if ($toYm)   { $sql .= " AND ym <= ?"; $params[] = $toYm; }
+            $sql .= " GROUP BY ym ORDER BY ym";
+        } else {
+            $sql = "SELECT ym, days_with_obs, is_in_market_month
+                    FROM prs_season_monthly_v2
+                    WHERE product_id = ? AND store_id = ?";
+            $params = [$productId, $storeId];
 
-        if ($fromYm) { $sql .= " AND ym >= ?"; $params[] = $fromYm; }
-        if ($toYm)   { $sql .= " AND ym <= ?"; $params[] = $toYm; }
-        $sql .= " ORDER BY ym";
+            if ($fromYm) { $sql .= " AND ym >= ?"; $params[] = $fromYm; }
+            if ($toYm)   { $sql .= " AND ym <= ?"; $params[] = $toYm; }
+            $sql .= " ORDER BY ym";
+        }
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
@@ -330,6 +376,11 @@ final class PRS_Query_Controller
 
     public function stockouts(int $productId, int $storeId, ?string $from = null, ?string $to = null): array
     {
+        // 跨门店查询暂不支持缺货段（或者返回空），因为逻辑较复杂
+        if ($storeId <= 0) {
+            return [];
+        }
+
         $sql = "SELECT gap_start, gap_end, gap_days
                 FROM prs_stockout_segments_v2
                 WHERE product_id = ? AND store_id = ?";
