@@ -12,8 +12,9 @@ ob_start();
 require_once PRS_LIB_PATH . '/query_controller.php';
 
 try {
+    $productId = (int)($_GET['product_id'] ?? 0);
     $controller = new PRS_Query_Controller();
-    $rows = $controller->list_stores();
+    $rows = $controller->list_stores($productId);
 
     prs_json_response(true, ['rows' => $rows]);
 } catch (Throwable $e) {

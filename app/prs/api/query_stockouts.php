@@ -17,8 +17,8 @@ try {
     $from = $_GET['from'] ?? null;
     $to   = $_GET['to']   ?? null;
 
-    if ($pid <= 0 || $sid <= 0) {
-        prs_json_response(false, null, 'product_id/store_id required', 400);
+    if ($pid <= 0) { // store_id optional (0=all)
+        prs_json_response(false, null, 'product_id required', 400);
     }
 
     $controller = new PRS_Query_Controller();
