@@ -265,6 +265,18 @@ $preselect = [
       if (data.ok && data.items) {
         allProducts = data.items;
         updateProductDatalist(allProducts);
+
+        // [New] Check if current product is still valid
+        if (selectedProd) {
+            const exists = allProducts.find(p => p.id === selectedProd.id);
+            if (!exists) {
+                // Not found in new list -> Clear it
+                selectedProd = null;
+                $('#inpProd').value = '';
+                $('#prodInfo').textContent = '';
+                toast('该门店暂无此产品，已清除产品选择', 'info');
+            }
+        }
       }
     } catch (e) { console.error('加载产品失败:', e); }
   }
@@ -279,6 +291,17 @@ $preselect = [
         allStores = storeRows;
         updateStoreDatalist(allStores);
         updateQuickStoreSelect(allStores);
+
+        // [New] Check if current store is still valid (ignore "All Stores" id=0)
+        if (selectedStore && selectedStore.id !== 0) {
+            const exists = allStores.find(s => s.id === selectedStore.id);
+            if (!exists) {
+                // Not found in new list -> Clear it
+                selectedStore = null;
+                $('#inpStore').value = '';
+                toast('此产品未在当前门店销售，已清除门店选择', 'info');
+            }
+        }
       }
     } catch (e) { console.error('加载门店失败:', e); }
   }
